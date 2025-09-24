@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../bloc/auth_bloc.dart';
-import '/../../core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
-
+import '../bloc/auth_bloc.dart';
 
 class OtpVerificationPage extends StatelessWidget {
   final String phoneNumber;
@@ -21,14 +19,14 @@ class OtpVerificationPage extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'আপনার ফোনে পাঠানো কোডটি লিখুন', // Enter code sent to phone.
+              'আপনার ফোনে পাঠানো কোডটি লিখুন',
               style: Theme.of(context).textTheme.bodyLarge,
             ),
             const SizedBox(height: 20),
             TextField(
               controller: otpController,
-              decoration: InputDecoration(
-                labelText: 'ওটিপি', // OTP in Bangla.
+              decoration: const InputDecoration(
+                labelText: 'ওটিপি',
                 border: OutlineInputBorder(),
               ),
               keyboardType: TextInputType.number,
@@ -51,11 +49,18 @@ class OtpVerificationPage extends StatelessWidget {
                 }
                 return ElevatedButton(
                   onPressed: () {
-                    context.read<AuthBloc>().add(
-                      LoginEvent(phoneNumber, otpController.text),
-                    );
+                    final otp = otpController.text;
+                    if (otp.length == 6) {
+                      context.read<AuthBloc>().add(
+                            VerifyOtpEvent(phoneNumber, otp),
+                          );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('ওটিপি ৬ সংখ্যার হতে হবে')),
+                      );
+                    }
                   },
-                  child: const Text('যাচাই করুন'), // Verify in Bangla.
+                  child: const Text('যাচাই করুন'),
                 );
               },
             ),
