@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:smartsheba/features/auth/presentation/pages/profile_creation_page.dart';
-import 'package:smartsheba/features/auth/presentation/pages/profile_edit_page.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/register_page.dart';
 import 'features/auth/presentation/pages/otp_verification_page.dart';
+import 'features/auth/presentation/pages/profile_creation_page.dart';
+import 'features/auth/presentation/pages/profile_edit_page.dart';
 import 'features/home/presentation/pages/home_page.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
+// Note: You must create this file for the application to compile.
+import 'features/home/presentation/pages/service_detail_page.dart'; 
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -37,6 +39,11 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/profile-edit',
       builder: (context, state) => const ProfileEditPage(),
+    ),
+    // --- New Route for Service Category Taps ---
+    GoRoute(
+      path: '/services/:id',
+      builder: (context, state) => ServiceDetailPage(id: state.pathParameters['id']!),
     ),
   ],
   redirect: (context, state) {
