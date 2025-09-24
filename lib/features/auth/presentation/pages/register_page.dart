@@ -1,77 +1,112 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../bloc/auth_bloc.dart';
-import '/../../core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
+import 'package:smartsheba/core/theme/app_theme.dart';
+import 'package:smartsheba/core/utils/validators.dart';
+import '../bloc/auth_bloc.dart';
 
-
-class RegisterPage extends StatelessWidget {
+class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final nameController = TextEditingController();
-    final phoneController = TextEditingController();
-    final emailController = TextEditingController();
+  State<RegisterPage> createState() => _RegisterPageState();
+}
 
+class _RegisterPageState extends State<RegisterPage> {
+  final _formKey = GlobalKey<FormState>();
+  final nameController = TextEditingController();
+  final phoneController = TextEditingController();
+  final emailController = TextEditingController();
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    phoneController.dispose();
+    emailController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('নিবন্ধন', style: TextStyle(color: Colors.white))),
-      body: Padding(
+      appBar: AppBar(
+        title: const Text('নিবন্ধন', style: TextStyle(color: Colors.white)),
+      ),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: InputDecoration(
-                labelText: 'নাম', // Name in Bangla.
-                border: OutlineInputBorder(),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'নাম',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'নাম প্রয়োজন';
+                  }
+                  return null;
+                },
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: phoneController,
-              decoration: InputDecoration(
-                labelText: 'ফোন নম্বর', // Phone Number in Bangla.
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.phone, color: AppColors.primary),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: phoneController,
+                decoration: InputDecoration(
+                  labelText: 'ফোন নম্বর',
+                  border: const OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.phone, color: AppColors.primary),
+                ),
+                keyboardType: TextInputType.phone,
+                validator: (value) => Validators.validatePhoneNumber(value),
               ),
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: emailController,
-              decoration: InputDecoration(
-                labelText: 'ইমেইল (ঐচ্ছিক)', // Email (Optional) in Bangla.
-                border: OutlineInputBorder(),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: emailController,
+                decoration: const InputDecoration(
+                  labelText: 'ইমেইল (ঐচ্ছিক)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) => Validators.validateEmail(value),
               ),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 20),
-            BlocConsumer<AuthBloc, AuthState>(
-              listener: (context, state) {
-                if (state is Authenticated) {
-                  context.go('/');
-                } else if (state is AuthError) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(state.message)),
-                  );
-                }
-              },
-              builder: (context, state) {
-                if (state is AuthLoading) {
-                  return const CircularProgressIndicator();
-                }
-                return ElevatedButton(
-                  onPressed: () {
-                    context.read<AuthBloc>().add(
-                      LoginEvent(phoneController.text, '123456'), // Dummy OTP for now.
+              const SizedBox(height: 20),
+              BlocConsumer<AuthBloc, AuthState>(
+                listener: (context, state) {
+                  if (state is Authenticated) {
+                    context.go('/');
+                  } else if (state is AuthError) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(state.message)),
                     );
-                  },
-                  child: const Text('নিবন্ধন করুন'), // Register in Bangla.
-                );
-              },
-            ),
-          ],
+                  }
+                },
+                builder: (context, state) {
+                  if (state is AuthLoading) {
+                    return const CircularProgressIndicator();
+                  }
+                  return ElevatedButton(
+                    onPressed: () {
+                      if (_formKey.currentState?.validate() ?? false) {
+                        context.read<AuthBloc>().add(SendOtpEvent(phoneController.text));
+                        context.go('/otp?phone=${phoneController.text}');
+                      }
+                    },
+                    child: const Text('নিবন্ধন করুন'),
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
+              TextButton(
+                onPressed: () {
+                  context.go('/login');
+                },
+                child: const Text('লগইন পেজে ফিরে যান'),
+              ),
+            ],
+          ),
         ),
       ),
     );

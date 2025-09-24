@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:smartsheba/core/theme/app_theme.dart';
 import 'package:smartsheba/core/utils/validators.dart';
 import '../bloc/auth_bloc.dart';
-import '/../../core/theme/app_theme.dart';
-import '../../core/utils/validators.dart';
+
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -26,9 +26,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('লগইন', style: TextStyle(color: Colors.white)),
-      ),
+      appBar: AppBar(title: const Text('লগইন', style: TextStyle(color: Colors.white))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -43,13 +41,13 @@ class _LoginPageState extends State<LoginPage> {
               const SizedBox(height: 20),
               TextFormField(
                 controller: phoneController,
-                validator: (value) => Validators.validatePhoneNumber(value ?? ''),
                 decoration: InputDecoration(
                   labelText: 'ফোন নম্বর',
                   border: const OutlineInputBorder(),
                   prefixIcon: Icon(Icons.phone, color: AppColors.primary),
                 ),
                 keyboardType: TextInputType.phone,
+                validator: (value) => Validators.validatePhoneNumber(value),
               ),
               const SizedBox(height: 20),
               BlocConsumer<AuthBloc, AuthState>(
@@ -69,9 +67,8 @@ class _LoginPageState extends State<LoginPage> {
                   return ElevatedButton(
                     onPressed: () {
                       if (_formKey.currentState?.validate() ?? false) {
-                        context.read<AuthBloc>().add(
-                          LoginEvent(phoneController.text, '123456'),
-                        );
+                        context.read<AuthBloc>().add(SendOtpEvent(phoneController.text));
+                        context.go('/otp?phone=${phoneController.text}');
                       }
                     },
                     child: const Text('ওটিপি পাঠান'),
@@ -83,7 +80,7 @@ class _LoginPageState extends State<LoginPage> {
                   context.go('/register');
                 },
                 child: const Text('নতুন অ্যাকাউন্ট তৈরি করুন'),
-              )
+              ),
             ],
           ),
         ),
