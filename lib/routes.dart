@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:smartsheba/features/auth/presentation/pages/profile_creation_page.dart';
+import 'package:smartsheba/features/auth/presentation/pages/profile_edit_page.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/register_page.dart';
 import 'features/auth/presentation/pages/otp_verification_page.dart';
@@ -28,9 +30,16 @@ final GoRouter appRouter = GoRouter(
         phoneNumber: state.uri.queryParameters['phone'] ?? '',
       ),
     ),
+    GoRoute(
+      path: '/profile-creation',
+      builder: (context, state) => const ProfileCreationPage(),
+    ),
+    GoRoute(
+      path: '/profile-edit',
+      builder: (context, state) => const ProfileEditPage(),
+    ),
   ],
   redirect: (context, state) {
-    // Correctly accessing the Bloc state without listening
     final authState = BlocProvider.of<AuthBloc>(context, listen: false).state;
     final isAuthenticated = authState is Authenticated;
     final targetPath = state.uri.path;
