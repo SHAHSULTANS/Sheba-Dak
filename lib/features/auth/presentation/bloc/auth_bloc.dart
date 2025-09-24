@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartsheba/core/network/api_client.dart';
-// import '../../../core/network/api_client.dart';
 import '../../domain/entities/user_entity.dart';
 
 abstract class AuthEvent {}
@@ -19,6 +18,13 @@ class VerifyOtpEvent extends AuthEvent {
 }
 
 class LogoutEvent extends AuthEvent {}
+
+class UpdateProfileEvent extends AuthEvent {
+  final String name;
+  final String? email;
+  final String? address;
+  UpdateProfileEvent({required this.name, this.email, this.address});
+}
 
 abstract class AuthState {}
 
@@ -76,6 +82,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       final prefs = await SharedPreferences.getInstance();
       prefs.remove('user');
       emit(Unauthenticated());
+    });
+
+    on<UpdateProfileEvent>((event, emit) async {
+      final currentState = state;
+      if (currentState is Authenticated) {
+        emit(AuthLoading());
+        try {
+          // Dummy API update.
+          await Future.delayed(const Duration(seconds: 1));
+          final updatedUser = currentState.user.copyWith(
+            name: event.name,
+            email: event.email,
+            address: event.address,
+          );
+          final prefs = await SharedPreferences.getInstance();
+          prefs.setString('user', jsonEncode(updatedUser.toJson()));
+          emit(Authenticated(updatedUser));
+        } catch (e) {
+          emit(AuthError('Profile update error: $e'));
+        }
+      }
     });
 
     _loadSavedUser();

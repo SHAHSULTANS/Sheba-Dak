@@ -36,7 +36,13 @@ class OtpVerificationPage extends StatelessWidget {
             BlocConsumer<AuthBloc, AuthState>(
               listener: (context, state) {
                 if (state is Authenticated) {
-                  context.go('/');
+                  // Navigate to profile creation for new users, or home for existing.
+                  // The backend dummy response for new users will not have an address field.
+                  if (state.user.address == null) {
+                    context.go('/profile-creation');
+                  } else {
+                    context.go('/');
+                  }
                 } else if (state is AuthError) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(state.message)),
@@ -52,8 +58,8 @@ class OtpVerificationPage extends StatelessWidget {
                     final otp = otpController.text;
                     if (otp.length == 6) {
                       context.read<AuthBloc>().add(
-                            VerifyOtpEvent(phoneNumber, otp),
-                          );
+                          VerifyOtpEvent(phoneNumber, otp),
+                        );
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('ওটিপি ৬ সংখ্যার হতে হবে')),
