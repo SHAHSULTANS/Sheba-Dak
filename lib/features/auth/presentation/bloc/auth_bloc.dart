@@ -1,18 +1,25 @@
+import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:smartsheba/core/network/api_client.dart';
+// import '../../../core/network/api_client.dart';
 import '../../domain/entities/user_entity.dart';
 
-// Events
 abstract class AuthEvent {}
 
-class LoginEvent extends AuthEvent {
+class SendOtpEvent extends AuthEvent {
   final String phoneNumber;
-  final String otp; // Placeholder for Week 2 OTP logic.
-  LoginEvent(this.phoneNumber, this.otp);
+  SendOtpEvent(this.phoneNumber);
+}
+
+class VerifyOtpEvent extends AuthEvent {
+  final String phoneNumber;
+  final String otp;
+  VerifyOtpEvent(this.phoneNumber, this.otp);
 }
 
 class LogoutEvent extends AuthEvent {}
 
-// States
 abstract class AuthState {}
 
 class AuthInitial extends AuthState {}
@@ -33,26 +40,58 @@ class AuthError extends AuthState {
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc() : super(AuthInitial()) {
-    on<LoginEvent>((event, emit) async {
+    on<SendOtpEvent>((event, emit) async {
       emit(AuthLoading());
-      // Placeholder: Week 2 will add API call to /auth/login.
-      // For now, simulate success with dummy user.
       try {
-        final user = UserEntity(
-          id: 'e8e616e0-d894-4936-a3f5-391682ee794c',
-          name: 'Test User',
-          phoneNumber: event.phoneNumber,
-          token: 'dummy_jwt',
-          role: Role.customer,
-        );
-        emit(Authenticated(user));
+        final response = await ApiClient.sendOtp(event.phoneNumber);
+        if (response['success']) {
+          emit(AuthInitial()); // Or OtpSent state.
+        } else {
+          emit(AuthError('OTP send failed'));
+        }
       } catch (e) {
-        emit(AuthError('Login failed: $e'));
+        emit(AuthError('OTP send error: $e'));
       }
     });
 
-    on<LogoutEvent>((event, emit) {
+    on<VerifyOtpEvent>((event, emit) async {
+      emit(AuthLoading());
+      try {
+        final response = await ApiClient.verifyOtp(event.phoneNumber, event.otp);
+        if (response['success']) {
+          final userJson = response['user'] as Map<String, dynamic>;
+          final user = UserEntity.fromJson({...userJson, 'token': response['token']});
+          final prefs = await SharedPreferences.getInstance();
+          prefs.setString('user', jsonEncode(user.toJson()));
+          emit(Authenticated(user));
+        } else {
+          emit(AuthError('Invalid OTP'));
+        }
+      } catch (e) {
+        emit(AuthError('Verification error: $e'));
+      }
+    });
+
+    on<LogoutEvent>((event, emit) async {
+      final prefs = await SharedPreferences.getInstance();
+      prefs.remove('user');
       emit(Unauthenticated());
     });
+
+    _loadSavedUser();
+  }
+
+  void _loadSavedUser() async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedUserJson = prefs.getString('user');
+    if (savedUserJson != null) {
+      try {
+        final userMap = jsonDecode(savedUserJson) as Map<String, dynamic>;
+        final user = UserEntity.fromJson(userMap);
+        emit(Authenticated(user));
+      } catch (e) {
+        emit(Unauthenticated());
+      }
+    }
   }
 }
