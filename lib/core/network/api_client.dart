@@ -2,13 +2,12 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiClient {
-  static const String baseUrl = 'https://dummyapi.example.com';  // Replace with real backend URL in production.
+  static const String baseUrl = 'https://dummyapi.example.com'; 
 
   static Future<Map<String, dynamic>> sendOtp(String phoneNumber) async {
     // Dummy API simulation for dev.
-    await Future.delayed(const Duration(seconds: 1));  // Simulate network delay.
+    await Future.delayed(const Duration(seconds: 1)); 
     return {'success': true, 'message': 'OTP sent to $phoneNumber (dummy: 123456)'};
-    // Real: http.post(Uri.parse('$baseUrl/auth/send-otp'), body: {'phone': phoneNumber});
   }
 
   static Future<Map<String, dynamic>> verifyOtp(String phoneNumber, String otp) async {
@@ -22,12 +21,27 @@ class ApiClient {
           'id': 'e8e616e0-d894-4936-a3f5-391682ee794c',
           'name': 'Test User',
           'phone_number': phoneNumber,
-          'role': 'customer'  // Backend returns role (e.g., 'customer' default).
+          'role': 'customer'
         }
       };
     } else {
       throw Exception('Invalid OTP');
     }
-    // Real: http.post(Uri.parse('$baseUrl/auth/verify-otp'), body: {'phone': phoneNumber, 'otp': otp});
+  }
+
+  static Future<Map<String, dynamic>> updateProfile(String id, String name, String? email, String? address) async {
+    await Future.delayed(const Duration(seconds: 1));
+    return {
+      'success': true,
+      'user': {
+        'id': id,
+        'name': name,
+        'phone_number': 'dummy_phone',
+        'email': email,
+        'role': 'customer',
+        'address': address,
+      },
+      'token': 'updated_dummy_jwt',
+    };
   }
 }

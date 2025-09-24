@@ -1,12 +1,13 @@
-enum Role { customer, provider, admin }  // RBAC roles, extensible for superAdmin.
+enum Role { customer, provider, admin }
 
 class UserEntity {
-  final String id;  // UUID from backend (e.g., 'e8e616e0-d894-4936-a3f5-391682ee794c').
-  final String name;  // User’s full name.
-  final String phoneNumber;  // Primary auth identifier (Bangladesh format, e.g., '+8801XXXXXXXXX').
-  final String? email;  // Optional for multi-modal auth (FR-001).
-  final String token;  // JWT for API auth (includes role in payload).
-  final Role role;  // Core of RBAC, determines permissions.
+  final String id;
+  final String name;
+  final String phoneNumber;
+  final String? email;
+  final String token;
+  final Role role;
+  final String? address;  // Added for profile (editable).
 
   const UserEntity({
     required this.id,
@@ -15,9 +16,9 @@ class UserEntity {
     this.email,
     required this.token,
     required this.role,
+    this.address,
   });
 
-  // Factory for JSON deserialization (from API response).
   factory UserEntity.fromJson(Map<String, dynamic> json) {
     return UserEntity(
       id: json['id'] as String,
@@ -27,12 +28,12 @@ class UserEntity {
       token: json['token'] as String,
       role: Role.values.firstWhere(
         (r) => r.toString() == 'Role.${json['role']}',
-        orElse: () => Role.customer,  // Default to customer for safety.
+        orElse: () => Role.customer,
       ),
+      address: json['address'] as String?,
     );
   }
 
-  // Serialize to JSON for storage or API.
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
@@ -40,5 +41,23 @@ class UserEntity {
         'email': email,
         'token': token,
         'role': role.toString().split('.').last,
+        'address': address,
       };
+
+  // Copy method for updates (immutable entity).
+  UserEntity copyWith({
+    String? name,
+    String? email,
+    String? address,
+  }) {
+    return UserEntity(
+      id: id,
+      name: name ?? this.name,
+      phoneNumber: phoneNumber,
+      email: email ?? this.email,
+      token: token,
+      role: role,
+      address: address ?? this.address,
+    );
+  }
 }
