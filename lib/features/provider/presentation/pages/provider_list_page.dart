@@ -8,7 +8,7 @@ class ProviderListPage extends StatelessWidget {
   const ProviderListPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) { 
     final providers = DummyData.getProviders();
     
     return Scaffold(

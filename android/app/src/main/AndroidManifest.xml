@@ -1,4 +1,17 @@
+<!-- android/app/src/main/AndroidManifest.xml -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- ===== External storage permissions =====
+         - READ_EXTERNAL_STORAGE / WRITE_EXTERNAL_STORAGE: runtime অনুমতি দরকার (dangerous).
+         - MANAGE_EXTERNAL_STORAGE: "All files access" (special). উপলব্ধ Android 11 / API 30+ এ।
+           MANAGE_EXTERNAL_STORAGE চাইলে runtime এ userকে settings পেজে নিয়ে গিয়ে অনুমতি নিতে হবে:
+           Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION
+         - NOTE: WRITE_EXTERNAL_STORAGE behaviour changed on Android 11+; consider using
+           Storage Access Framework (SAF) or MediaStore instead of broad storage permissions.
+    -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+
     <application
         android:label="smartsheba"
         android:name="${applicationName}"

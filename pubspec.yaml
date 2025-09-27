@@ -13,10 +13,11 @@ dependencies:
   flutter_bloc: ^8.1.6
   go_router: ^14.3.0
   shared_preferences: ^2.3.2
-  http: ^1.2.3       # latest null safe
+  http: ^1.2.3
   google_fonts: ^6.2.1
   equatable: ^2.0.5
-
+  file_picker: ^8.1.2
+  permission_handler: ^11.3.1 # Added for file access permissions
 
 dev_dependencies:
   flutter_test:

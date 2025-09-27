@@ -60,10 +60,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
-      // --- MODERN APP BAR ---
       appBar: _buildModernAppBar(context, theme),
-      
-      // --- MAIN BODY ---
       body: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
           if (state is Authenticated) {
@@ -78,12 +75,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           return const Center(child: CircularProgressIndicator());
         },
       ),
-      
-      // --- FLOATING ACTION BUTTON ---
       floatingActionButton: _buildFloatingActionButton(context, theme),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      
-      // --- BOTTOM NAVIGATION ---
       bottomNavigationBar: _buildBottomNavigation(context, theme),
     );
   }
@@ -98,8 +91,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF2196F3), // Blue
-              Color(0xFF9C27B0), // Purple
+              Color(0xFF2196F3),
+              Color(0xFF9C27B0),
             ],
           ),
         ),
@@ -181,22 +174,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- WELCOME HEADER ---
           _buildWelcomeHeader(context, user, theme),
-          
-          // --- SEARCH BAR ---
           _buildSearchSection(context, theme),
-          
-          // --- QUICK ACTIONS ---
           _buildQuickActions(context, user, theme),
-          
-          // --- FEATURED SERVICES ---
           _buildFeaturedServices(context, categories, theme),
-          
-          // --- CATEGORIES GRID ---
           _buildCategoriesGrid(context, categories, theme),
-          
-          // --- BOTTOM SPACING ---
           const SizedBox(height: 100),
         ],
       ),
@@ -383,64 +365,155 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2196F3).withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('বুকিং তালিকা (শীঘ্রই আসছে)')),
-            );
-          },
-          borderRadius: BorderRadius.circular(16),
-          child: const Padding(
-            padding: EdgeInsets.all(20.0),
-            child: Row(
-              children: [
-                Icon(Icons.calendar_month_rounded, color: Colors.white, size: 24),
-                SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'আমার বুকিং',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+    return Column(
+      children: [
+        if (role == Role.customer)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF9C27B0), Color(0xFF673AB7)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF9C27B0).withOpacity(0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => context.go('/provider-registration'),
+                  borderRadius: BorderRadius.circular(16),
+                  splashColor: Colors.white.withOpacity(0.2),
+                  highlightColor: Colors.white.withOpacity(0.1),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.work_history_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'চলমান ও সম্পন্ন সেবাগুলো দেখুন',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'প্রোভাইডার হোন',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'আপনার সেবা প্রদান শুরু করতে আবেদন করুন',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            color: Colors.white70,
+                            size: 18,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 18),
-              ],
+              ),
+            ),
+          ),
+        Container(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF2196F3).withOpacity(0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('বুকিং তালিকা (শীঘ্রই আসছে)')),
+                );
+              },
+              borderRadius: BorderRadius.circular(16),
+              splashColor: Colors.white.withOpacity(0.2),
+              highlightColor: Colors.white.withOpacity(0.1),
+              child: const Padding(
+                padding: EdgeInsets.all(20.0),
+                child: Row(
+                  children: [
+                    Icon(Icons.calendar_month_rounded, color: Colors.white, size: 24),
+                    SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'আমার বুকিং',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'চলমান ও সম্পন্ন সেবাগুলো দেখুন',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 18),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 
@@ -720,7 +793,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         onTap: (index) {
           switch (index) {
             case 0:
-              // Already on home
               break;
             case 1:
               context.go('/services');

@@ -3,9 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 // --- AUTH IMPORTS ---
-import 'package:smartsheba/features/auth/presentation/bloc/auth_bloc.dart'; 
+import 'package:smartsheba/features/auth/presentation/bloc/auth_bloc.dart';
 // We must import UserEntity for Role enum used in redirect logic
-import 'package:smartsheba/features/auth/domain/entities/user_entity.dart'; 
+import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
 
 // --- Auth Page Imports ---
 import 'features/auth/presentation/pages/login_page.dart';
@@ -16,14 +16,17 @@ import 'features/auth/presentation/pages/profile_edit_page.dart';
 
 // --- Home/Service Imports ---
 import 'features/home/presentation/pages/home_page.dart';
-import 'features/home/presentation/pages/service_list_page.dart'; 
-import 'features/home/presentation/pages/service_detail_page.dart'; 
+import 'features/home/presentation/pages/service_list_page.dart';
+import 'features/home/presentation/pages/service_detail_page.dart';
 
-// --- PROVIDER IMPORTS (Restored for completeness) ---
+// --- PROVIDER IMPORTS ---
 import 'features/provider/presentation/pages/provider_list_page.dart';
 import 'features/provider/presentation/pages/provider_detail_page.dart';
 import 'features/provider/presentation/pages/provider_dashboard_page.dart';
-import 'features/provider/presentation/pages/contact_provider_page.dart'; 
+import 'features/provider/presentation/pages/contact_provider_page.dart';
+
+// ✅ NEW: Provider Registration Page Import
+import 'features/provider/presentation/pages/provider_registration_page.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -46,15 +49,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/otp',
       builder: (context, state) {
-        // 🎯 FIX: Changed the query key from 'phone' to 'phoneNumber' 
-        // to match the navigation call in LoginPage.
-        final phoneNumber = state.uri.queryParameters['phoneNumber']; 
-        
-        // Safety check: if no phone number, redirect back to registration
-        // if (phoneNumber == null || phoneNumber.isEmpty) {
-        //   return const RegisterPage(); 
-        // }
-
+        final phoneNumber = state.uri.queryParameters['phoneNumber'];
         return OtpVerificationPage(
           phoneNumber: phoneNumber.toString(),
         );
@@ -84,17 +79,20 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/booking',
-      builder: (context, state) => const Placeholder(child: Center(child: Text('Booking Page (Coming Week 5)'))),
+      builder: (context, state) => const Placeholder(
+        child: Center(child: Text('Booking Page (Coming Week 5)')),
+      ),
     ),
-    
-    // --- PROVIDER MANAGEMENT ROUTES (Restored) ---
+
+    // --- PROVIDER MANAGEMENT ROUTES ---
     GoRoute(
       path: '/providers',
       builder: (context, state) => const ProviderListPage(),
     ),
     GoRoute(
       path: '/provider-detail/:id',
-      builder: (context, state) => ProviderDetailPage(id: state.pathParameters['id']!),
+      builder: (context, state) =>
+          ProviderDetailPage(id: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/provider-dashboard',
@@ -102,34 +100,52 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/contact-provider/:id',
-      builder: (context, state) => const ContactProviderPage(), 
+      builder: (context, state) => const ContactProviderPage(),
+    ),
+
+    // ✅ NEW: PROVIDER REGISTRATION ROUTE
+    GoRoute(
+      path: '/provider-registration',
+      builder: (context, state) => const ProviderRegistrationPage(),
     ),
   ],
-  
-  // --- REDIRECT LOGIC (Restored for completeness and RBAC) ---
+
+  // --- REDIRECT LOGIC ---
   redirect: (context, state) {
     final authState = BlocProvider.of<AuthBloc>(context, listen: false).state;
     final isAuthenticated = authState is Authenticated;
     final targetPath = state.uri.path;
 
     // Retrieve user role for RBAC check
-    final userRole = isAuthenticated ? (authState as Authenticated).user.role : null;
-    
-    // A. UNAUTHENTICATED REDIRECTS 
+    final userRole =
+        isAuthenticated ? (authState as Authenticated).user.role : null;
+
+    // A. UNAUTHENTICATED REDIRECTS
     if (!isAuthenticated) {
-      // Allow all service/provider pages to be public
-      const publicPaths = ['/login', '/register', '/otp', '/services', '/service-detail', '/providers', '/provider-detail'];
+      // Allow all service/provider pages + provider-registration to be public
+      const publicPaths = [
+        '/login',
+        '/register',
+        '/otp',
+        '/services',
+        '/service-detail',
+        '/providers',
+        '/provider-detail',
+        '/provider-registration'
+      ];
       if (publicPaths.any(targetPath.startsWith)) {
-        return null; 
+        return null;
       }
       return '/login'; // Redirect private paths to login
-    } 
-
-    // B. AUTHENTICATED REDIRECTS (Block login/register)
-    if (isAuthenticated && ['/login', '/register', '/otp', '/profile-creation'].contains(targetPath)) {
-        return '/';
     }
-    
+
+    // B. AUTHENTICATED REDIRECTS (Block login/register pages)
+    if (isAuthenticated &&
+        ['/login', '/register', '/otp', '/profile-creation']
+            .contains(targetPath)) {
+      return '/';
+    }
+
     // C. RBAC: PROVIDER DASHBOARD ACCESS CONTROL
     if (targetPath == '/provider-dashboard') {
       if (userRole == Role.provider) {
@@ -138,10 +154,17 @@ final GoRouter appRouter = GoRouter(
         return '/'; // Block access for customers/admins (redirect home)
       }
     }
-    
+
+    // D. RBAC: BLOCK PROVIDERS/ADMINS from registration page
+    if (targetPath == '/provider-registration') {
+      if (userRole == Role.provider || userRole == Role.admin) {
+        return '/'; // Redirect providers/admins home if they try to access registration
+      }
+    }
+
     return null;
   },
-  
+
   // --- ERROR HANDLER ---
   errorBuilder: (context, state) => Scaffold(
     body: Center(child: Text('Page not found: ${state.uri}')),
