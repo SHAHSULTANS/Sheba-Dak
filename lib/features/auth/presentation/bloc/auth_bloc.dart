@@ -3,9 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartsheba/core/network/api_client.dart';
 
-// ✅ নতুন ইমপোর্ট
 import '../../../provider/domain/entities/provider_application.dart'; 
-
 import '../../domain/entities/user_entity.dart';
 
 /// --- EVENTS ---
@@ -31,7 +29,6 @@ class UpdateProfileEvent extends AuthEvent {
   UpdateProfileEvent({required this.name, this.email, this.address});
 }
 
-/// ✅ নতুন ইভেন্ট
 class SubmitProviderApplicationEvent extends AuthEvent {
   final ProviderApplication application;
   SubmitProviderApplicationEvent(this.application);
@@ -56,16 +53,26 @@ class AuthError extends AuthState {
   AuthError(this.message);
 }
 
+/// ✅ Newly Added State
+class OtpSent extends AuthState {
+  final String phoneNumber;
+  OtpSent(this.phoneNumber);
+}
+
 /// --- BLOC ---
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc() : super(AuthInitial()) {
-    /// OTP পাঠানো
+    
+    /// ✅ OTP পাঠানো
     on<SendOtpEvent>((event, emit) async {
       emit(AuthLoading());
       try {
         final response = await ApiClient.sendOtp(event.phoneNumber);
+
         if (response['success']) {
-          emit(AuthInitial()); // অথবা OtpSent state
+          // ✅ Emit correct state for listener to navigate
+          print('✅ OTP sent successfully to ${event.phoneNumber}');
+          emit(OtpSent(event.phoneNumber)); 
         } else {
           emit(AuthError('OTP send failed'));
         }
@@ -74,7 +81,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     });
 
-    /// OTP ভেরিফিকেশন
+    /// OTP Verification
     on<VerifyOtpEvent>((event, emit) async {
       emit(AuthLoading());
       try {
@@ -93,20 +100,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     });
 
-    /// লগআউট
+    /// Logout
     on<LogoutEvent>((event, emit) async {
       final prefs = await SharedPreferences.getInstance();
       prefs.remove('user');
       emit(Unauthenticated());
     });
 
-    /// প্রোফাইল আপডেট
+    /// Update Profile
     on<UpdateProfileEvent>((event, emit) async {
       final currentState = state;
       if (currentState is Authenticated) {
         emit(AuthLoading());
         try {
-          // Dummy API update.
           await Future.delayed(const Duration(seconds: 1));
           final updatedUser = currentState.user.copyWith(
             name: event.name,
@@ -122,11 +128,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     });
 
-    /// ✅ নতুন হ্যান্ডলার — প্রোভাইডার অ্যাপ্লিকেশন সাবমিশন
+    /// ✅ Submit Provider Application
     on<SubmitProviderApplicationEvent>((event, emit) async {
       final currentState = state;
 
-      // আগে চেক করো ইউজার লগইন করেছে কিনা
       if (currentState is! Authenticated) {
         emit(AuthError('Authentication required to submit application.'));
         return;
@@ -137,8 +142,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         final response = await ApiClient.submitProviderApplication(event.application);
 
         if (response['success']) {
-          // সাবমিট সফল হয়েছে। 
-          // অ্যাডমিন অ্যাপ্রুভ করার আগ পর্যন্ত ইউজার customer-ই থাকবে।
           emit(Authenticated(currentState.user));
         } else {
           emit(AuthError(response['message'] ?? 'Application submission failed.'));

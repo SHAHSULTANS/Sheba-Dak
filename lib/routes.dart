@@ -47,7 +47,7 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const RegisterPage(),
     ),
     GoRoute(
-      path: '/otp',
+      path: '/otp-verification',
       builder: (context, state) {
         final phoneNumber = state.uri.queryParameters['phoneNumber'];
         return OtpVerificationPage(
@@ -126,7 +126,7 @@ final GoRouter appRouter = GoRouter(
       const publicPaths = [
         '/login',
         '/register',
-        '/otp',
+        '/otp-verification',
         '/services',
         '/service-detail',
         '/providers',
@@ -141,7 +141,7 @@ final GoRouter appRouter = GoRouter(
 
     // B. AUTHENTICATED REDIRECTS (Block login/register pages)
     if (isAuthenticated &&
-        ['/login', '/register', '/otp', '/profile-creation']
+        ['/login', '/register', '/otp-verification', '/profile-creation']
             .contains(targetPath)) {
       return '/';
     }
