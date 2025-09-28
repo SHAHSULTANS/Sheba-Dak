@@ -6,6 +6,8 @@ import '../../features/home/domain/entities/service.dart';
 import '../../features/provider/domain/entities/service_provider.dart';
 // 🆕 Import the provider application entity
 import '../../../features/provider/domain/entities/provider_application.dart';
+// 🆕 Import BookingEntity
+import '../../features/booking/domain/entities/booking_entity.dart';
 
 class DummyData {
   // ==============================
@@ -23,6 +25,28 @@ class DummyData {
   /// অ্যাডমিন প্যানেলে অপেক্ষমাণ অ্যাপ্লিকেশন তালিকা
   static List<ProviderApplication> getPendingApplications() {
     return List.unmodifiable(_applications);
+  }
+
+  // ==============================
+  // 🆕 Store for Bookings (Week 6 Foundation)
+  // ==============================
+  static final List<BookingEntity> _bookings = [];
+
+  /// নতুন বুকিং যোগ করা
+  static void addBooking(BookingEntity booking) {
+    _bookings.add(booking);
+    print(
+        'DEBUG: New Booking Added: ${booking.id} for Customer ${booking.customerId}');
+  }
+
+  /// কাস্টমার অনুযায়ী বুকিং তালিকা
+  static List<BookingEntity> getBookingsByCustomer(String customerId) {
+    return _bookings.where((b) => b.customerId == customerId).toList();
+  }
+
+  /// প্রোভাইডার অনুযায়ী বুকিং তালিকা
+  static List<BookingEntity> getBookingsByProvider(String providerId) {
+    return _bookings.where((b) => b.providerId == providerId).toList();
   }
 
   // ==============================
