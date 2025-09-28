@@ -1,11 +1,9 @@
-// lib/features/booking/presentation/pages/book_service_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../auth/domain/entities/user_entity.dart'; // Role enum
+import '../../../auth/domain/entities/user_entity.dart';
 
 class BookServicePage extends StatefulWidget {
   final String providerId;
@@ -46,9 +44,7 @@ class _BookServicePageState extends State<BookServicePage> {
       firstDate: DateTime.now(),
       lastDate: DateTime.now().add(const Duration(days: 90)),
     );
-    if (pickedDate != null) {
-      setState(() => selectedDate = pickedDate);
-    }
+    if (pickedDate != null) setState(() => selectedDate = pickedDate);
   }
 
   Future<void> _selectTime() async {
@@ -56,9 +52,7 @@ class _BookServicePageState extends State<BookServicePage> {
       context: context,
       initialTime: TimeOfDay.now(),
     );
-    if (pickedTime != null) {
-      setState(() => selectedTime = pickedTime);
-    }
+    if (pickedTime != null) setState(() => selectedTime = pickedTime);
   }
 
   @override
@@ -71,159 +65,177 @@ class _BookServicePageState extends State<BookServicePage> {
       ),
       body: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
-          // Show unauthorized message only if NOT Authenticated AND NOT Loading
-          if (state is! Authenticated && state is! AuthLoading) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Text(
-                  'বুকিং দেওয়ার জন্য আপনাকে একজন গ্রাহক হিসেবে লগইন করতে হবে।',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18, color: AppColors.error),
-                ),
-              ),
-            );
+          // Unauthorized / non-customer
+          if (state is! Authenticated) {
+            return _buildUnauthorizedMessage(
+                'বুকিং দেওয়ার জন্য আপনাকে লগইন করতে হবে।');
+          }
+          if (state.user.role != Role.customer) {
+            return _buildUnauthorizedMessage(
+                'শুধুমাত্র গ্রাহকরাই বুকিং দিতে পারবেন।');
           }
 
-          // Check if authenticated customer
-          final bool isCustomer = state is Authenticated && state.user.role == Role.customer;
-
-          // Block non-customer users
-          if (state is Authenticated && !isCustomer) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Text(
-                  'শুধুমাত্র গ্রাহকরাই বুকিং দিতে পারবেন।',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18, color: AppColors.error),
-                ),
-              ),
-            );
-          }
-
-          // Authenticated customer OR loading: show form
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'পরিষেবা: ${widget.serviceCategory}',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                _buildInfoCard(
+                  icon: Icons.category_outlined,
+                  title: 'পরিষেবা',
+                  child: Text(widget.serviceCategory,
+                      style: const TextStyle(fontSize: 16)),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'মূল্য: ৳${widget.price.toStringAsFixed(0)}',
-                  style: TextStyle(fontSize: 16, color: AppColors.primary),
+                const SizedBox(height: 16),
+                _buildInfoCard(
+                  icon: Icons.attach_money,
+                  title: 'মূল্য',
+                  child: Text('৳${widget.price.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
-                const SizedBox(height: 24),
-
-                ListTile(
-                  leading: const Icon(Icons.calendar_today, color: AppColors.primary),
-                  title: Text(
-                    selectedDate == null
-                        ? 'তারিখ নির্বাচন করুন'
-                        : 'তারিখ: ${selectedDate!.day}-${selectedDate!.month}-${selectedDate!.year}',
-                    style: TextStyle(
-                      color: selectedDate == null ? AppColors.grey600 : AppColors.textPrimary,
-                    ),
-                  ),
-                  trailing: const Icon(Icons.edit),
+                const SizedBox(height: 16),
+                _buildSelectableCard(
+                  icon: Icons.calendar_today,
+                  label: selectedDate == null
+                      ? 'তারিখ নির্বাচন করুন'
+                      : 'তারিখ: ${selectedDate!.day}-${selectedDate!.month}-${selectedDate!.year}',
                   onTap: _selectDate,
                 ),
-
-                ListTile(
-                  leading: const Icon(Icons.access_time, color: AppColors.primary),
-                  title: Text(
-                    selectedTime == null
-                        ? 'সময় নির্বাচন করুন'
-                        : 'সময়: ${selectedTime!.format(context)}',
-                    style: TextStyle(
-                      color: selectedTime == null ? AppColors.grey600 : AppColors.textPrimary,
-                    ),
-                  ),
-                  trailing: const Icon(Icons.edit),
+                const SizedBox(height: 16),
+                _buildSelectableCard(
+                  icon: Icons.access_time,
+                  label: selectedTime == null
+                      ? 'সময় নির্বাচন করুন'
+                      : 'সময়: ${selectedTime!.format(context)}',
                   onTap: _selectTime,
                 ),
-
                 const SizedBox(height: 16),
-
-                TextField(
-                  controller: descriptionController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'বিবরণ (ঐচ্ছিক)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-
+                _buildDescriptionField(),
                 const SizedBox(height: 32),
-
-                SizedBox(
-                  width: double.infinity,
-                  child: BlocConsumer<AuthBloc, AuthState>(
-                    listener: (context, state) {
-                      if (state is Authenticated) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text('✅ বুকিং সফল হয়েছে! নিশ্চিতকরণের জন্য অপেক্ষা করুন।'),
-                            backgroundColor: AppColors.success,
-                          ),
-                        );
-                        context.go('/');
-                      } else if (state is AuthError) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('বুকিং ব্যর্থ: ${state.message}')),
-                        );
-                      }
-                    },
-                    builder: (context, state) {
-                      final isLoading = state is AuthLoading;
-                      if (isLoading) {
-                        return Center(child: CircularProgressIndicator(color: AppColors.primary));
-                      }
-
-                      // Only show button if authenticated customer
-                      if (!isCustomer) return const SizedBox.shrink();
-
-                      return ElevatedButton.icon(
-                        onPressed: () {
-                          if (scheduledDateTime != null) {
-                            context.read<AuthBloc>().add(
-                                  CreateBookingEvent(
-                                    providerId: widget.providerId,
-                                    serviceCategory: widget.serviceCategory,
-                                    scheduledAt: scheduledDateTime!,
-                                    price: widget.price,
-                                    description: descriptionController.text.isEmpty
-                                        ? null
-                                        : descriptionController.text,
-                                  ),
-                                );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('অনুগ্রহ করে তারিখ ও সময় নির্বাচন করুন।'),
-                              ),
-                            );
-                          }
-                        },
-                        icon: const Icon(Icons.check_circle_outline, color: Colors.white),
-                        label: const Text('বুকিং নিশ্চিত করুন', style: TextStyle(color: Colors.white, fontSize: 16)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      );
-                    },
-                  ),
-                ),
+                _buildSubmitButton(state),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildUnauthorizedMessage(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Text(message,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 18, color: AppColors.error)),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(
+      {required IconData icon, required String title, required Widget child}) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: AppColors.primary.withOpacity(0.1),
+              child: Icon(icon, color: AppColors.primary),
+            ),
+            const SizedBox(width: 12),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title,
+                  style: const TextStyle(
+                      fontSize: 14, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              child,
+            ]),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectableCard(
+      {required IconData icon, required String label, required VoidCallback onTap}) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: ListTile(
+        onTap: onTap,
+        leading: CircleAvatar(
+          backgroundColor: AppColors.primary.withOpacity(0.1),
+          child: Icon(icon, color: AppColors.primary),
+        ),
+        title: Text(label,
+            style: TextStyle(
+                color:
+                    label.contains('নির্বাচন') ? AppColors.grey600 : AppColors.textPrimary)),
+        trailing: const Icon(Icons.edit, color: Colors.grey),
+      ),
+    );
+  }
+
+  Widget _buildDescriptionField() {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: TextField(
+          controller: descriptionController,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            labelText: 'বিবরণ (ঐচ্ছিক)',
+            border: InputBorder.none,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton(AuthState state) {
+    final isLoading = state is AuthLoading;
+
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: isLoading
+            ? null
+            : () {
+                if (scheduledDateTime != null) {
+                  context.read<AuthBloc>().add(CreateBookingEvent(
+                        providerId: widget.providerId,
+                        serviceCategory: widget.serviceCategory,
+                        scheduledAt: scheduledDateTime!,
+                        price: widget.price,
+                        description: descriptionController.text.isEmpty
+                            ? null
+                            : descriptionController.text,
+                      ));
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('অনুগ্রহ করে তারিখ ও সময় নির্বাচন করুন।')));
+                }
+              },
+        icon: isLoading
+            ? const SizedBox(
+                width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+            : const Icon(Icons.check_circle_outline, color: Colors.white),
+        label: Text(
+          isLoading ? 'প্রসেসিং...' : 'বুকিং নিশ্চিত করুন',
+          style: const TextStyle(fontSize: 16, color: Colors.white),
+        ),
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: AppColors.primary,
+        ),
       ),
     );
   }

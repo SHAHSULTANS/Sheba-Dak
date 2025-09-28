@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-// --- AUTH IMPORTS ---
 import 'package:smartsheba/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
 
-// --- CORE/HOME IMPORTS ---
 import '../../../../core/utils/dummy_data.dart';
 import '../../domain/entities/service.dart';
 
@@ -16,10 +14,8 @@ class ServiceDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // সার্ভিস ডেটা আনা
     final service = DummyData.getServiceById(id);
 
-    // Handle not found
     if (service.id == 'error') {
       return Scaffold(
         appBar: AppBar(
@@ -43,14 +39,11 @@ class ServiceDetailPage extends StatelessWidget {
       );
     }
 
-    // ✅ প্রোভাইডার ID খুঁজে বের করা — DummyData.getProviders() থেকে
     final provider = DummyData.getProviders().firstWhere(
       (p) => p.services.contains(service.id),
       orElse: () => DummyData.getProviders().first,
     );
     final providerId = provider.id;
-
-    // ✅ categoryId থেকেই serviceCategory
     final serviceCategory = service.categoryId;
     final price = service.price;
 
@@ -61,10 +54,11 @@ class ServiceDetailPage extends StatelessWidget {
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Service Name Header
             Text(
               service.name,
               style: Theme.of(context)
@@ -72,47 +66,87 @@ class ServiceDetailPage extends StatelessWidget {
                   .headlineMedium
                   ?.copyWith(fontWeight: FontWeight.bold),
             ),
-            const Divider(height: 24),
-            Text('বিবরণ', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
-            Text(service.description, style: Theme.of(context).textTheme.bodyLarge),
-            const SizedBox(height: 16),
-
-            Text(
-              'মূল্য: ৳${service.price.toStringAsFixed(0)}',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(color: Theme.of(context).colorScheme.secondary),
+            Row(
+              children: [
+                Icon(Icons.category, color: Theme.of(context).primaryColor),
+                const SizedBox(width: 8),
+                Text(
+                  serviceCategory.toUpperCase(),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade700,
+                      ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text('প্রোভাইডার: ${service.providerName}',
-                style: Theme.of(context).textTheme.titleMedium),
+            const Divider(height: 32, thickness: 1),
+
+            // Description Section
+            _buildSection(
+              context,
+              icon: Icons.description_outlined,
+              title: 'বিবরণ',
+              child: Text(service.description,
+                  style: Theme.of(context).textTheme.bodyLarge),
+            ),
+
+            // Price Section
+            const SizedBox(height: 16),
+            _buildSection(
+              context,
+              icon: Icons.attach_money,
+              title: 'মূল্য',
+              child: Text('৳${price.toStringAsFixed(0)}',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.secondary,
+                      fontWeight: FontWeight.bold)),
+            ),
+
+            // Provider Section
+            const SizedBox(height: 16),
+            _buildSection(
+              context,
+              icon: Icons.person_outline,
+              title: 'প্রোভাইডার',
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor:
+                        Theme.of(context).primaryColor.withOpacity(0.2),
+                    child: const Icon(Icons.person, color: Colors.white),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(provider.name,
+                      style: Theme.of(context).textTheme.titleMedium),
+                ],
+              ),
+            ),
+
             const SizedBox(height: 32),
 
+            // Book Now Button
             BlocBuilder<AuthBloc, AuthState>(
               builder: (context, state) {
                 if (state is Authenticated && state.user.role == Role.customer) {
                   return SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
+                      onPressed: () => context.go(
+                        '/booking/$providerId/$serviceCategory/${price.toStringAsFixed(0)}',
+                      ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
+                        backgroundColor: Colors.green,
+                        elevation: 4,
                       ),
-                      onPressed: () {
-                        // ✅ নতুন রুট ফরম্যাটে যাওয়া
-                        context.go(
-                          '/booking/$providerId/$serviceCategory/${price.toStringAsFixed(0)}',
-                        );
-                      },
                       child: const Text(
-                        'Book Now',
-                        style:
-                            TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        'বুক করুন',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
                   );
@@ -122,6 +156,35 @@ class ServiceDetailPage extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // Helper for section card
+  Widget _buildSection(BuildContext context,
+      {required IconData icon, required String title, required Widget child}) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(
+            children: [
+              Icon(icon, color: Theme.of(context).primaryColor),
+              const SizedBox(width: 8),
+              Text(
+                title,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                    ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          child,
+        ]),
       ),
     );
   }
