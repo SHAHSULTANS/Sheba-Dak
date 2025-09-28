@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 // --- AUTH IMPORTS ---
 import 'package:smartsheba/features/auth/presentation/bloc/auth_bloc.dart';
-// We must import UserEntity for Role enum used in redirect logic
 import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
 
 // --- Auth Page Imports ---
@@ -24,9 +23,10 @@ import 'features/provider/presentation/pages/provider_list_page.dart';
 import 'features/provider/presentation/pages/provider_detail_page.dart';
 import 'features/provider/presentation/pages/provider_dashboard_page.dart';
 import 'features/provider/presentation/pages/contact_provider_page.dart';
-
-// ✅ NEW: Provider Registration Page Import
 import 'features/provider/presentation/pages/provider_registration_page.dart';
+
+// ✅ NEW: Booking Page Import
+import 'features/booking/presentation/pages/book_service_page.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -77,11 +77,22 @@ final GoRouter appRouter = GoRouter(
         id: state.pathParameters['serviceId']!,
       ),
     ),
+
+    // ✅ NEW BOOKING ROUTE (Dynamic Parameters)
     GoRoute(
-      path: '/booking',
-      builder: (context, state) => const Placeholder(
-        child: Center(child: Text('Booking Page (Coming Week 5)')),
-      ),
+      path: '/booking/:providerId/:serviceCategory/:price',
+      builder: (context, state) {
+        final providerId = state.pathParameters['providerId']!;
+        final serviceCategory = state.pathParameters['serviceCategory']!;
+        final priceString = state.pathParameters['price']!;
+        final price = double.tryParse(priceString) ?? 0.0;
+
+        return BookServicePage(
+          providerId: providerId,
+          serviceCategory: serviceCategory,
+          price: price,
+        );
+      },
     ),
 
     // --- PROVIDER MANAGEMENT ROUTES ---
@@ -122,7 +133,7 @@ final GoRouter appRouter = GoRouter(
 
     // A. UNAUTHENTICATED REDIRECTS
     if (!isAuthenticated) {
-      // Allow all service/provider pages + provider-registration to be public
+      // Allow public pages
       const publicPaths = [
         '/login',
         '/register',
@@ -131,7 +142,7 @@ final GoRouter appRouter = GoRouter(
         '/service-detail',
         '/providers',
         '/provider-detail',
-        '/provider-registration'
+        '/provider-registration',
       ];
       if (publicPaths.any(targetPath.startsWith)) {
         return null;
@@ -149,16 +160,16 @@ final GoRouter appRouter = GoRouter(
     // C. RBAC: PROVIDER DASHBOARD ACCESS CONTROL
     if (targetPath == '/provider-dashboard') {
       if (userRole == Role.provider) {
-        return null; // Allow access if user is a provider
+        return null;
       } else {
-        return '/'; // Block access for customers/admins (redirect home)
+        return '/';
       }
     }
 
-    // D. RBAC: BLOCK PROVIDERS/ADMINS from registration page
+    // D. RBAC: Prevent providers/admin from registration page
     if (targetPath == '/provider-registration') {
       if (userRole == Role.provider || userRole == Role.admin) {
-        return '/'; // Redirect providers/admins home if they try to access registration
+        return '/';
       }
     }
 

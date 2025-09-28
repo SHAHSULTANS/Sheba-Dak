@@ -3,15 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 // --- AUTH IMPORTS ---
-// This import provides AuthBloc and all its states (including Authenticated).
-import 'package:smartsheba/features/auth/presentation/bloc/auth_bloc.dart'; 
-// This import provides UserEntity and the Role enum.
-import 'package:smartsheba/features/auth/domain/entities/user_entity.dart'; 
+import 'package:smartsheba/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
 
 // --- CORE/HOME IMPORTS ---
 import '../../../../core/utils/dummy_data.dart';
 import '../../domain/entities/service.dart';
-
 
 class ServiceDetailPage extends StatelessWidget {
   final String id;
@@ -19,10 +16,10 @@ class ServiceDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // FIX 1: Use the dedicated method to ensure the correct service is loaded.
+    // সার্ভিস ডেটা আনা
     final service = DummyData.getServiceById(id);
 
-    // Handle the 'Service not found' error gracefully.
+    // Handle not found
     if (service.id == 'error') {
       return Scaffold(
         appBar: AppBar(
@@ -36,14 +33,27 @@ class ServiceDetailPage extends StatelessWidget {
             child: Text(
               service.description,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.red),
+              style: Theme.of(context)
+                  .textTheme
+                  .titleLarge
+                  ?.copyWith(color: Colors.red),
             ),
           ),
         ),
       );
     }
-    
-    // Main UI for a valid service
+
+    // ✅ প্রোভাইডার ID খুঁজে বের করা — DummyData.getProviders() থেকে
+    final provider = DummyData.getProviders().firstWhere(
+      (p) => p.services.contains(service.id),
+      orElse: () => DummyData.getProviders().first,
+    );
+    final providerId = provider.id;
+
+    // ✅ categoryId থেকেই serviceCategory
+    final serviceCategory = service.categoryId;
+    final price = service.price;
+
     return Scaffold(
       appBar: AppBar(
         title: Text(service.name, style: const TextStyle(color: Colors.white)),
@@ -55,23 +65,34 @@ class ServiceDetailPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(service.name, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              service.name,
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const Divider(height: 24),
             Text('বিবরণ', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             Text(service.description, style: Theme.of(context).textTheme.bodyLarge),
             const SizedBox(height: 16),
 
-            Text('মূল্য: ৳${service.price.toStringAsFixed(0)}', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Theme.of(context).colorScheme.secondary)),
+            Text(
+              'মূল্য: ৳${service.price.toStringAsFixed(0)}',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(color: Theme.of(context).colorScheme.secondary),
+            ),
             const SizedBox(height: 8),
-            Text('প্রোভাইডার: ${service.providerName}', style: Theme.of(context).textTheme.titleMedium),
+            Text('প্রোভাইডার: ${service.providerName}',
+                style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 32),
 
-            // RBAC Check: Show button ONLY for authenticated customers
             BlocBuilder<AuthBloc, AuthState>(
               builder: (context, state) {
-                // FIXED: Using Role.customer instead of RoleEnum.customer
-                if (state is Authenticated && state.user.role == Role.customer) { 
+                if (state is Authenticated && state.user.role == Role.customer) {
                   return SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -79,17 +100,24 @@ class ServiceDetailPage extends StatelessWidget {
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: () {
-                        context.go('/booking?serviceId=${service.id}');
+                        // ✅ নতুন রুট ফরম্যাটে যাওয়া
+                        context.go(
+                          '/booking/$providerId/$serviceCategory/${price.toStringAsFixed(0)}',
+                        );
                       },
-                      child: const Text('প্রোভাইডারের সাথে যোগাযোগ করুন', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Book Now',
+                        style:
+                            TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   );
                 }
-                // Show nothing if not an authenticated customer
-                return const SizedBox.shrink(); 
+                return const SizedBox.shrink();
               },
             ),
           ],
