@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 // --- AUTH IMPORTS ---
 import 'package:smartsheba/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
+import 'package:smartsheba/features/auth/presentation/pages/profile_veiw.dart';
 
 // --- Auth Page Imports ---
 import 'features/auth/presentation/pages/login_page.dart';
@@ -63,7 +64,12 @@ final GoRouter appRouter = GoRouter(
       path: '/profile-edit',
       builder: (context, state) => const ProfileEditPage(),
     ),
+    GoRoute(
+      path: '/profile-view', // নতুন প্রোফাইল ভিউ রুট
+      builder: (context, state) => const ProfileViewPage(),
+    ),
 
+    
     // --- SERVICE DISCOVERY ROUTES ---
     GoRoute(
       path: '/services/:categoryId',
@@ -152,7 +158,7 @@ final GoRouter appRouter = GoRouter(
 
     // B. AUTHENTICATED REDIRECTS (Block login/register pages)
     if (isAuthenticated &&
-        ['/login', '/register', '/otp-verification', '/profile-creation']
+        ['/login', '/register', '/otp-verification']
             .contains(targetPath)) {
       return '/';
     }

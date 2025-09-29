@@ -803,7 +803,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               );
               break;
             case 3:
-              context.go('/profile-edit');
+              print("yes");
+              GoRouter.of(context).go('/profile-view');
               break;
           }
         },
