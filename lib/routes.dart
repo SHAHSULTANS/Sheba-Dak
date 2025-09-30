@@ -26,8 +26,9 @@ import 'features/provider/presentation/pages/provider_dashboard_page.dart';
 import 'features/provider/presentation/pages/contact_provider_page.dart';
 import 'features/provider/presentation/pages/provider_registration_page.dart';
 
-// ✅ NEW: Booking Page Import
+// ✅ Booking Page Imports
 import 'features/booking/presentation/pages/book_service_page.dart';
+import 'features/booking/presentation/pages/my_bookings_page.dart'; // 🆕 Added
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -65,11 +66,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const ProfileEditPage(),
     ),
     GoRoute(
-      path: '/profile-view', // নতুন প্রোফাইল ভিউ রুট
+      path: '/profile-view',
       builder: (context, state) => const ProfileViewPage(),
     ),
 
-    
     // --- SERVICE DISCOVERY ROUTES ---
     GoRoute(
       path: '/services/:categoryId',
@@ -101,6 +101,12 @@ final GoRouter appRouter = GoRouter(
       },
     ),
 
+    // ✅ 🆕 MY BOOKINGS ROUTE
+    GoRoute(
+      path: '/my-bookings',
+      builder: (context, state) => const MyBookingsPage(),
+    ),
+
     // --- PROVIDER MANAGEMENT ROUTES ---
     GoRoute(
       path: '/providers',
@@ -119,8 +125,6 @@ final GoRouter appRouter = GoRouter(
       path: '/contact-provider/:id',
       builder: (context, state) => const ContactProviderPage(),
     ),
-
-    // ✅ NEW: PROVIDER REGISTRATION ROUTE
     GoRoute(
       path: '/provider-registration',
       builder: (context, state) => const ProviderRegistrationPage(),
@@ -139,7 +143,6 @@ final GoRouter appRouter = GoRouter(
 
     // A. UNAUTHENTICATED REDIRECTS
     if (!isAuthenticated) {
-      // Allow public pages
       const publicPaths = [
         '/login',
         '/register',
@@ -153,17 +156,16 @@ final GoRouter appRouter = GoRouter(
       if (publicPaths.any(targetPath.startsWith)) {
         return null;
       }
-      return '/login'; // Redirect private paths to login
+      return '/login';
     }
 
     // B. AUTHENTICATED REDIRECTS (Block login/register pages)
     if (isAuthenticated &&
-        ['/login', '/register', '/otp-verification']
-            .contains(targetPath)) {
+        ['/login', '/register', '/otp-verification'].contains(targetPath)) {
       return '/';
     }
 
-    // C. RBAC: PROVIDER DASHBOARD ACCESS CONTROL
+    // C. RBAC: PROVIDER DASHBOARD
     if (targetPath == '/provider-dashboard') {
       if (userRole == Role.provider) {
         return null;
@@ -172,7 +174,14 @@ final GoRouter appRouter = GoRouter(
       }
     }
 
-    // D. RBAC: Prevent providers/admin from registration page
+    // 🆕 D. RBAC: MY BOOKINGS PAGE (Customers only)
+    if (targetPath == '/my-bookings') {
+      if (userRole != Role.customer) {
+        return '/'; // redirect non-customers home
+      }
+    }
+
+    // E. RBAC: Prevent providers/admin from registration page
     if (targetPath == '/provider-registration') {
       if (userRole == Role.provider || userRole == Role.admin) {
         return '/';
@@ -182,7 +191,6 @@ final GoRouter appRouter = GoRouter(
     return null;
   },
 
-  // --- ERROR HANDLER ---
   errorBuilder: (context, state) => Scaffold(
     body: Center(child: Text('Page not found: ${state.uri}')),
   ),

@@ -40,14 +40,25 @@ class DummyData {
   }
 
   /// কাস্টমার অনুযায়ী বুকিং তালিকা
-  static List<BookingEntity> getBookingsByCustomer(String customerId) {
-    return _bookings.where((b) => b.customerId == customerId).toList();
-  }
+  // static List<BookingEntity> getBookingsByCustomer(String customerId) {
+  //   return _bookings.where((b) => b.customerId == customerId).toList();
+  // }
 
   /// প্রোভাইডার অনুযায়ী বুকিং তালিকা
   static List<BookingEntity> getBookingsByProvider(String providerId) {
     return _bookings.where((b) => b.providerId == providerId).toList();
   }
+
+
+  /// কাস্টমার অনুযায়ী বুকিং তালিকা (Upcoming আগে দেখাবে)
+static List<BookingEntity> getBookingsByCustomer(String customerId) {
+  return _bookings
+      .where((b) => b.customerId == customerId)
+      .toList()
+    ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+}
+  // 🆕 Internal access for ApiClient (mutable list)
+  static List<BookingEntity> getInternalBookingsList() => _bookings;
 
   // ==============================
   // Existing Service & Provider Data
@@ -329,3 +340,5 @@ class DummyData {
     ];
   }
 }
+
+
