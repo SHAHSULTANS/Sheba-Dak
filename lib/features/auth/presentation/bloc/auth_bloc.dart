@@ -65,6 +65,14 @@ class CreateBookingEvent extends AuthEvent {
   });
 }
 
+/// --- নতুন Event: Update Booking Status ---
+class UpdateBookingStatusEvent extends AuthEvent {
+  final String id;
+  final BookingStatus newStatus;
+
+  UpdateBookingStatusEvent(this.id, this.newStatus);
+}
+
 /// --- STATES ---
 abstract class AuthState {}
 
@@ -116,7 +124,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         final response = await ApiClient.verifyOtp(event.phoneNumber, event.otp);
         if (response['success']) {
           final userJson = response['user'] as Map<String, dynamic>;
-          final user = UserEntity.fromJson({...userJson, 'token': response['token']});
+          final user =
+              UserEntity.fromJson({...userJson, 'token': response['token']});
           final prefs = await SharedPreferences.getInstance();
           prefs.setString('user', jsonEncode(user.toJson()));
           emit(Authenticated(user));
@@ -135,19 +144,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(Unauthenticated());
     });
 
-    /// Enhanced Profile Update with new fields
+    /// Enhanced Profile Update
     on<UpdateProfileEvent>((event, emit) async {
       final currentState = state;
       if (currentState is Authenticated) {
         emit(AuthLoading());
         try {
-          // Convert gender string to enum
           Gender? genderEnum;
           if (event.gender != null) {
             genderEnum = UserEntity.genderFromString(event.gender);
           }
 
-          // Create updated user with new fields
           final updatedUser = currentState.user.copyWith(
             name: event.name,
             email: event.email,
@@ -160,20 +167,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             updatedAt: DateTime.now(),
           );
 
-          // TODO: Call API to update profile on backend
-          // final response = await ApiClient.updateProfile(updatedUser);
-          // if (!response['success']) {
-          //   emit(AuthError('প্রোফাইল আপডেট ব্যর্থ হয়েছে'));
-          //   return;
-          // }
-
-          // Save to local storage
           final prefs = await SharedPreferences.getInstance();
           prefs.setString('user', jsonEncode(updatedUser.toJson()));
-          
-          // Simulate API call
+
           await Future.delayed(const Duration(seconds: 1));
-          
+
           emit(Authenticated(updatedUser));
         } catch (e) {
           emit(AuthError('প্রোফাইল আপডেটে ত্রুটি: $e'));
@@ -194,7 +192,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       emit(AuthLoading());
       try {
-        final response = await ApiClient.submitProviderApplication(event.application);
+        final response =
+            await ApiClient.submitProviderApplication(event.application);
 
         if (response['success']) {
           emit(Authenticated(currentState.user));
@@ -206,7 +205,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     });
 
-    /// Create Booking Handler
+    /// Create Booking
     on<CreateBookingEvent>((event, emit) async {
       final currentState = state;
 
@@ -232,6 +231,36 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         }
       } else {
         emit(AuthError('বুকিং দিতে লগইন করতে হবে।'));
+      }
+    });
+
+    /// Update Booking Status (RBAC)
+    on<UpdateBookingStatusEvent>((event, emit) async {
+      final currentState = state;
+
+      if (currentState is Authenticated &&
+          currentState.user.role == Role.provider) {
+        emit(AuthLoading());
+
+        try {
+          final authRole = currentState.user.role.toString().split('.').last;
+
+          final response = await ApiClient.updateBookingStatus(
+            event.id,
+            event.newStatus,
+            authRole,
+          );
+
+          if (response['success']) {
+            emit(Authenticated(currentState.user));
+          } else {
+            emit(AuthError('স্ট্যাটাস আপডেট ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।'));
+          }
+        } catch (e) {
+          emit(AuthError('স্ট্যাটাস আপডেট করার সময় ত্রুটি হয়েছে: ${e.toString()}'));
+        }
+      } else {
+        emit(AuthError('অনুমোদিত নয়: শুধুমাত্র প্রদানকারীরা স্ট্যাটাস আপডেট করতে পারে।'));
       }
     });
 

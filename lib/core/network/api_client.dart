@@ -1,11 +1,8 @@
-// lib/core/network/api_client.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-
-// 🆕 Uuid & BookingEntity ইমপোর্ট
 import 'package:uuid/uuid.dart';
-import '../../features/booking/domain/entities/booking_entity.dart';
 
+import '../../features/booking/domain/entities/booking_entity.dart';
 import 'package:smartsheba/core/utils/dummy_data.dart';
 import '../../features/provider/domain/entities/provider_application.dart';
 
@@ -14,7 +11,6 @@ class ApiClient {
 
   // -------------------- OTP পাঠানো --------------------
   static Future<Map<String, dynamic>> sendOtp(String phoneNumber) async {
-    // Dummy API simulation for dev.
     await Future.delayed(const Duration(seconds: 1));
     return {
       'success': true,
@@ -25,7 +21,6 @@ class ApiClient {
   // -------------------- OTP ভেরিফাই --------------------
   static Future<Map<String, dynamic>> verifyOtp(
       String phoneNumber, String otp) async {
-    // Dummy verification: Success if OTP is '123456'.
     await Future.delayed(const Duration(seconds: 1));
     if (otp == '123456') {
       return {
@@ -64,12 +59,8 @@ class ApiClient {
   // -------------------- প্রোভাইডার অ্যাপ্লিকেশন সাবমিট --------------------
   static Future<Map<String, dynamic>> submitProviderApplication(
       ProviderApplication application) async {
-    // Simulate network delay
     await Future.delayed(const Duration(seconds: 1));
-
-    // Simulate successful submission and save to DummyData for admin review
     DummyData.addProviderApplication(application);
-
     return {
       'success': true,
       'message': 'Application submitted (pending approval)'
@@ -87,28 +78,23 @@ class ApiClient {
     double price,
     String? description,
   ) async {
-    // Simulate network delay
     await Future.delayed(const Duration(seconds: 1));
 
-    // Generate a unique ID for the new booking
     final id = const Uuid().v4();
 
-    // Create the Booking Entity
     final booking = BookingEntity(
       id: id,
       customerId: customerId,
       providerId: providerId,
       serviceCategory: serviceCategory,
       scheduledAt: scheduledAt,
-      status: BookingStatus.pending, // Default status for new bookings
+      status: BookingStatus.pending,
       price: price,
       description: description,
     );
 
-    // Store the booking in our dummy database
     DummyData.addBooking(booking);
 
-    // Return the simulated API response
     return {
       'success': true,
       'id': id,
@@ -116,4 +102,57 @@ class ApiClient {
       'message': 'বুকিং সফলভাবে তৈরি হয়েছে (নিশ্চিতকরণের অপেক্ষায়)',
     };
   }
+
+  // ============================
+  // 🆕 Update Booking Status API
+  // ============================
+  static Future<Map<String, dynamic>> updateBookingStatus(
+    String id,
+    BookingStatus newStatus,
+    String authRole,
+  ) async {
+    await Future.delayed(const Duration(seconds: 1));
+
+    // RBAC Check
+    if (authRole != 'provider') {
+      throw Exception(
+          'Unauthorized (403 Forbidden): শুধুমাত্র প্রদানকারীরা স্ট্যাটাস আপডেট করতে পারে।');
+    }
+
+    final bookings = DummyData.getInternalBookingsList();
+    final index = bookings.indexWhere((b) => b.id == id);
+
+    if (index != -1) {
+      final updatedBooking = bookings[index].copyWith(status: newStatus);
+      bookings[index] = updatedBooking;
+
+      return {
+        'success': true,
+        'id': id,
+        'new_status': newStatus.toString().split('.').last,
+        'message': 'বুকিং স্ট্যাটাস সফলভাবে আপডেট করা হয়েছে।',
+      };
+    }
+
+    throw Exception('Booking not found: বুকিং আইডি খুঁজে পাওয়া যায়নি।');
+  }
+
+
+  // ============================
+// 🆕 Get Bookings By User API
+// ============================
+static Future<List<BookingEntity>> getBookingsByUser(
+    String userId, String role) async {
+  await Future.delayed(const Duration(seconds: 1)); // simulate network delay
+
+  final bookings = DummyData.getInternalBookingsList();
+
+  if (role == 'provider') {
+    // provider হিসেবে শুধুমাত্র providerId ম্যাচ করুন
+    return bookings.where((b) => b.providerId == userId).toList();
+  } else {
+    // customer হিসেবে শুধুমাত্র customerId ম্যাচ করুন
+    return bookings.where((b) => b.customerId == userId).toList();
+  }
+}
 }

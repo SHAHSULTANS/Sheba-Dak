@@ -84,26 +84,37 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   PreferredSizeWidget _buildModernAppBar(BuildContext context, ThemeData theme) {
     return AppBar(
       elevation: 0,
-      backgroundColor: Colors.transparent,
-      flexibleSpace: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF2196F3),
-              Color(0xFF9C27B0),
-            ],
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.white,
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF2196F3), Color(0xFF9C27B0)],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              'শেবা',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 18,
+              ),
+            ),
           ),
-        ),
-      ),
-      title: const Text(
-        'স্মার্টশেবা',
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
-          fontSize: 20,
-        ),
+          const SizedBox(width: 8),
+          const Text(
+            'ডাক', 
+            style: TextStyle(
+              color: Colors.black87,
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
+            ),
+          ),
+        ],
       ),
       actions: [
         _buildNotificationIcon(context),
@@ -118,11 +129,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
+        color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
       ),
       child: IconButton(
-        icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+        icon: Badge(
+          smallSize: 8,
+          backgroundColor: Colors.red,
+          child: const Icon(Icons.notifications_outlined, 
+              color: Colors.grey, size: 24),
+        ),
         onPressed: () {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('নোটিফিকেশন (শীঘ্রই আসছে)')),
@@ -139,15 +156,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       return Container(
         margin: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Colors.grey.shade100,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
         ),
         child: IconButton(
           icon: CircleAvatar(
-            radius: 14,
+            radius: 16,
             backgroundColor: const Color(0xFF2196F3),
             child: Text(
-              user.name.isNotEmpty ? user.name[0] : 'U',
+              user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
               style: const TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
@@ -188,50 +206,104 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   Widget _buildWelcomeHeader(BuildContext context, UserEntity user, ThemeData theme) {
     return Container(
       width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
             Color(0xFF2196F3),
-            Color(0xFF9C27B0),
+            Color(0xFF1976D2),
           ],
         ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(32),
-          bottomRight: Radius.circular(32),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.shade300.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'স্বাগতম, ${user.name.split(' ').first}!',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.location_on_outlined, color: Colors.white70, size: 18),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    user.address ?? 'ঢাকা, বাংলাদেশ',
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'স্বাগতম, ${user.name.split(' ').first}!',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.location_on_outlined, 
+                                color: Colors.white70, size: 18),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                user.address ?? 'ঢাকা, বাংলাদেশ',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.waving_hand, 
+                        color: Colors.white, size: 24),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-              ],
-            ),
-          ],
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.star, color: Colors.yellow.shade300, size: 16),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'বহুমুখী সেবার নির্ভরযোগ্য প্ল্যাটফর্ম',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -239,18 +311,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Widget _buildSearchSection(BuildContext context, ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.all(24.0),
+      padding: const EdgeInsets.all(20.0),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withOpacity(0.06),
               blurRadius: 20,
               offset: const Offset(0, 4),
             ),
           ],
+          border: Border.all(color: Colors.grey.shade200),
         ),
         child: Material(
           color: Colors.transparent,
@@ -261,22 +334,31 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               );
             },
             borderRadius: BorderRadius.circular(16),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               child: Row(
                 children: [
-                  Icon(Icons.search_rounded, color: Colors.grey, size: 24),
-                  SizedBox(width: 12),
+                  Icon(Icons.search_rounded, 
+                      color: Colors.grey.shade600, size: 24),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'সেবা, প্রোভাইডার, বা ক্যাটাগরি খুঁজুন...',
                       style: TextStyle(
-                        color: Colors.grey,
+                        color: Colors.grey.shade600,
                         fontSize: 16,
                       ),
                     ),
                   ),
-                  Icon(Icons.tune_rounded, color: Colors.grey, size: 20),
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.tune_rounded, 
+                        color: Colors.grey.shade600, size: 20),
+                  ),
                 ],
               ),
             ),
@@ -288,7 +370,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Widget _buildQuickActions(BuildContext context, UserEntity user, ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -297,6 +379,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
               color: Colors.grey.shade800,
+              fontSize: 20,
             ),
           ),
           const SizedBox(height: 16),
@@ -308,60 +391,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Widget _buildRoleSpecificActions(BuildContext context, Role role, ThemeData theme) {
     if (role == Role.provider) {
-      return Container(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF4CAF50).withOpacity(0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => context.go('/provider-dashboard'),
-            borderRadius: BorderRadius.circular(16),
-            child: const Padding(
-              padding: EdgeInsets.all(20.0),
-              child: Row(
-                children: [
-                  Icon(Icons.dashboard_rounded, color: Colors.white, size: 24),
-                  SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'ড্যাশবোর্ডে যান',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'নতুন রিকোয়েস্ট ও পরিসংখ্যান দেখুন',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 18),
-                ],
-              ),
-            ),
-          ),
-        ),
+      return _buildActionCard(
+        context: context,
+        onTap: () => context.go('/provider-dashboard'),
+        icon: Icons.dashboard_rounded,
+        title: 'ড্যাশবোর্ডে যান',
+        subtitle: 'নতুন রিকোয়েস্ট ও পরিসংখ্যান দেখুন',
+        gradient: const [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+        iconColor: Colors.white,
       );
     }
 
@@ -370,160 +407,128 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         if (role == Role.customer)
           Padding(
             padding: const EdgeInsets.only(bottom: 16.0),
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFF9C27B0), Color(0xFF673AB7)],
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF9C27B0).withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => context.go('/provider-registration'),
-                  borderRadius: BorderRadius.circular(16),
-                  splashColor: Colors.white.withOpacity(0.2),
-                  highlightColor: Colors.white.withOpacity(0.1),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.work_history_rounded,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'প্রোভাইডার হোন',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'আপনার সেবা প্রদান শুরু করতে আবেদন করুন',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: Colors.white70,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.arrow_forward_ios_rounded,
-                            color: Colors.white70,
-                            size: 18,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+            child: _buildActionCard(
+              context: context,
+              onTap: () => context.go('/provider-registration'),
+              icon: Icons.work_history_rounded,
+              title: 'প্রোভাইডার হোন',
+              subtitle: 'আপনার সেবা প্রদান শুরু করতে আবেদন করুন',
+              gradient: const [Color(0xFF9C27B0), Color(0xFF7B1FA2)],
+              iconColor: Colors.white,
             ),
           ),
-        Container(
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF2196F3).withOpacity(0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('বুকিং তালিকা (শীঘ্রই আসছে)')),
-                );
-              },
-              borderRadius: BorderRadius.circular(16),
-              splashColor: Colors.white.withOpacity(0.2),
-              highlightColor: Colors.white.withOpacity(0.1),
-              child: const Padding(
-                padding: EdgeInsets.all(20.0),
-                child: Row(
-                  children: [
-                    Icon(Icons.calendar_month_rounded, color: Colors.white, size: 24),
-                    SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'আমার বুকিং',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'চলমান ও সম্পন্ন সেবাগুলো দেখুন',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 18),
-                  ],
-                ),
-              ),
-            ),
-          ),
+        _buildActionCard(
+          context: context,
+          onTap: () {
+            context.go('/my-bookings');
+            // ScaffoldMessenger.of(context).showSnackBar(
+            //   const SnackBar(content: Text('বুকিং তালিকা (শীঘ্রই আসছে)')),
+            // );
+          },
+          icon: Icons.calendar_month_rounded,
+          title: 'আমার বুকিং',
+          subtitle: 'চলমান ও সম্পন্ন সেবাগুলো দেখুন',
+          gradient: const [Color(0xFF2196F3), Color(0xFF1976D2)],
+          iconColor: Colors.white,
         ),
       ],
     );
   }
 
+  Widget _buildActionCard({
+    required BuildContext context,
+    required VoidCallback onTap,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required List<Color> gradient,
+    required Color iconColor,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: gradient,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: gradient.first.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          splashColor: Colors.white.withOpacity(0.2),
+          highlightColor: Colors.white.withOpacity(0.1),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, color: iconColor, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.arrow_forward_ios_rounded, 
+                      color: Colors.white.withOpacity(0.8), size: 16),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildFeaturedServices(BuildContext context, List<ServiceCategory> categories, ThemeData theme) {
+    final featuredCategories = categories.take(6).toList();
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 32),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -532,11 +537,21 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: Colors.grey.shade800,
+                  fontSize: 20,
                 ),
               ),
               TextButton(
                 onPressed: () => context.go('/services'),
-                child: const Text('সব দেখুন'),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF2196F3),
+                ),
+                child: const Row(
+                  children: [
+                    Text('সব দেখুন'),
+                    SizedBox(width: 4),
+                    Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                  ],
+                ),
               ),
             ],
           ),
@@ -547,29 +562,33 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            itemCount: categories.take(6).length,
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            itemCount: featuredCategories.length,
             itemBuilder: (context, index) {
-              final category = categories[index];
+              final category = featuredCategories[index];
+              final color = _getCategoryColor(index);
+              
               return Container(
                 width: 120,
-                margin: const EdgeInsets.only(right: 16),
+                margin: EdgeInsets.only(
+                  right: index == featuredCategories.length - 1 ? 20 : 16,
+                ),
                 child: Material(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   elevation: 0,
-                  shadowColor: Colors.black.withOpacity(0.1),
                   child: InkWell(
                     onTap: () => context.go('/services/${category.id}'),
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.grey.shade200),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.06),
-                            blurRadius: 15,
-                            offset: const Offset(0, 4),
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
@@ -581,7 +600,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF2196F3).withOpacity(0.1),
+                                color: color.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Image.asset(
@@ -589,10 +608,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 height: 32,
                                 width: 32,
                                 errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
+                                  return Icon(
                                     Icons.category_rounded,
                                     size: 32,
-                                    color: Color(0xFF2196F3),
+                                    color: color,
                                   );
                                 },
                               ),
@@ -600,10 +619,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             const SizedBox(height: 12),
                             Text(
                               category.name,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.black87,
+                                color: Colors.grey.shade800,
+                                height: 1.3,
                               ),
                               textAlign: TextAlign.center,
                               maxLines: 2,
@@ -629,18 +649,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       children: [
         const SizedBox(height: 32),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
           child: Text(
             'সব ক্যাটাগরি',
             style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
               color: Colors.grey.shade800,
+              fontSize: 20,
             ),
           ),
         ),
         const SizedBox(height: 16),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
           child: GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -653,15 +674,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             itemCount: categories.length,
             itemBuilder: (context, index) {
               final category = categories[index];
+              final color = _getCategoryColor(index);
+              
               return Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.grey.shade200),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 15,
-                      offset: const Offset(0, 4),
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
@@ -671,28 +695,25 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     onTap: () => context.go('/services/${category.id}'),
                     borderRadius: BorderRadius.circular(20),
                     child: Padding(
-                      padding: const EdgeInsets.all(20.0),
+                      padding: const EdgeInsets.all(16.0),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF2196F3), Color(0xFF9C27B0)],
-                              ),
-                              borderRadius: BorderRadius.circular(20),
+                              color: color.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(16),
                             ),
                             child: Image.asset(
                               category.iconPath,
                               height: 32,
                               width: 32,
-                              color: Colors.white,
                               errorBuilder: (context, error, stackTrace) {
-                                return const Icon(
+                                return Icon(
                                   Icons.category_rounded,
                                   size: 32,
-                                  color: Colors.white,
+                                  color: color,
                                 );
                               },
                             ),
@@ -700,10 +721,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           const SizedBox(height: 12),
                           Text(
                             category.name,
-                            style: const TextStyle(
-                              fontSize: 14,
+                            style: TextStyle(
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              color: Colors.black87,
+                              color: Colors.grey.shade800,
+                              height: 1.3,
                             ),
                             textAlign: TextAlign.center,
                             maxLines: 2,
@@ -722,16 +744,27 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  Color _getCategoryColor(int index) {
+    final colors = [
+      const Color(0xFF2196F3), // Blue
+      const Color(0xFF4CAF50), // Green
+      const Color(0xFF9C27B0), // Purple
+      const Color(0xFFFF9800), // Orange
+      const Color(0xFFF44336), // Red
+      const Color(0xFF00BCD4), // Cyan
+      const Color(0xFF795548), // Brown
+      const Color(0xFF607D8B), // Blue Grey
+    ];
+    return colors[index % colors.length];
+  }
+
   Widget _buildFloatingActionButton(BuildContext context, ThemeData theme) {
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF00BCD4), Color(0xFF4CAF50)],
-        ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF00BCD4).withOpacity(0.4),
+            color: const Color(0xFF2196F3).withOpacity(0.4),
             blurRadius: 15,
             offset: const Offset(0, 6),
           ),
@@ -739,14 +772,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ),
       child: FloatingActionButton.extended(
         onPressed: () => context.go('/providers'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        icon: const Icon(Icons.person_search_rounded, color: Colors.white),
+        backgroundColor: const Color(0xFF2196F3),
+        foregroundColor: Colors.white,
+        elevation: 4,
+        icon: const Icon(Icons.person_search_rounded, size: 22),
         label: const Text(
           'প্রোভাইডার খুঁজুন',
           style: TextStyle(
-            color: Colors.white,
             fontWeight: FontWeight.w600,
+            fontSize: 14,
           ),
         ),
       ),
@@ -764,50 +798,57 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             offset: const Offset(0, -4),
           ),
         ],
+        border: Border(
+          top: BorderSide(color: Colors.grey.shade200, width: 1),
+        ),
       ),
-      child: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: const Color(0xFF2196F3),
-        unselectedItemColor: Colors.grey.shade600,
-        elevation: 0,
-        currentIndex: 0,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: 'হোম',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.grid_view_rounded),
-            label: 'সেবা',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.chat_rounded),
-            label: 'মেসেজ',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_rounded),
-            label: 'প্রোফাইল',
-          ),
-        ],
-        onTap: (index) {
-          switch (index) {
-            case 0:
-              break;
-            case 1:
-              context.go('/services');
-              break;
-            case 2:
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('মেসেজিং (শীঘ্রই আসছে)')),
-              );
-              break;
-            case 3:
-              print("yes");
-              GoRouter.of(context).go('/profile-view');
-              break;
-          }
-        },
+      child: SafeArea(
+        top: false,
+        child: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          selectedItemColor: const Color(0xFF2196F3),
+          unselectedItemColor: Colors.grey.shade600,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
+          elevation: 0,
+          currentIndex: 0,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_rounded),
+              label: 'হোম',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.grid_view_rounded),
+              label: 'সেবা',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.chat_rounded),
+              label: 'মেসেজ',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_rounded),
+              label: 'প্রোফাইল',
+            ),
+          ],
+          onTap: (index) {
+            switch (index) {
+              case 0:
+                break;
+              case 1:
+                context.go('/services');
+                break;
+              case 2:
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('মেসেজিং (শীঘ্রই আসছে)')),
+                );
+                break;
+              case 3:
+                GoRouter.of(context).go('/profile-view');
+                break;
+            }
+          },
+        ),
       ),
     );
   }
