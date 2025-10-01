@@ -27,9 +27,12 @@ import 'features/provider/presentation/pages/provider_dashboard_page.dart';
 import 'features/provider/presentation/pages/contact_provider_page.dart';
 import 'features/provider/presentation/pages/provider_registration_page.dart';
 
-// ✅ Booking Page Imports
+// --- Booking Page Imports ---
 import 'features/booking/presentation/pages/book_service_page.dart';
-import 'features/booking/presentation/pages/my_bookings_page.dart'; // 🆕 Added
+import 'features/booking/presentation/pages/my_bookings_page.dart';
+
+// --- Chat Page Imports ---
+import 'features/chat/presentation/pages/chat_page.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -85,7 +88,7 @@ final GoRouter appRouter = GoRouter(
       ),
     ),
 
-    // ✅ NEW BOOKING ROUTE (Dynamic Parameters)
+    // --- BOOKING ROUTES ---
     GoRoute(
       path: '/booking/:providerId/:serviceCategory/:price',
       builder: (context, state) {
@@ -101,8 +104,6 @@ final GoRouter appRouter = GoRouter(
         );
       },
     ),
-
-    // ✅ 🆕 MY BOOKINGS ROUTE
     GoRoute(
       path: '/my-bookings',
       builder: (context, state) => const MyBookingsPage(),
@@ -131,10 +132,20 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const ProviderRegistrationPage(),
     ),
 
-    // 🆕 INCOMING REQUESTS ROUTE (Providers only)
+    // --- INCOMING REQUESTS ROUTE ---
     GoRoute(
       path: '/incoming-requests',
       builder: (context, state) => const IncomingRequestsPage(),
+    ),
+
+    // --- CHAT ROUTE ---
+    GoRoute(
+      path: '/chat/:bookingId/:customerId/:providerId',
+      builder: (context, state) => ChatPage(
+        bookingId: state.pathParameters['bookingId']!,
+        customerId: state.pathParameters['customerId']!,
+        providerId: state.pathParameters['providerId']!,
+      ),
     ),
   ],
 
@@ -144,9 +155,11 @@ final GoRouter appRouter = GoRouter(
     final isAuthenticated = authState is Authenticated;
     final targetPath = state.uri.path;
 
-    // Retrieve user role for RBAC check
-    final userRole =
-        isAuthenticated ? (authState as Authenticated).user.role : null;
+    // Retrieve user role and ID for RBAC check
+    final userRole = isAuthenticated ? (authState as Authenticated).user.role : null;
+    final userId = isAuthenticated ? (authState as Authenticated).user.id : null;
+
+    print('DEBUG: Redirect check - Target: $targetPath, Authenticated: $isAuthenticated, Role: $userRole, User ID: $userId');
 
     // A. UNAUTHENTICATED REDIRECTS
     if (!isAuthenticated) {
@@ -161,47 +174,75 @@ final GoRouter appRouter = GoRouter(
         '/provider-registration',
       ];
       if (publicPaths.any(targetPath.startsWith)) {
+        print('DEBUG: Allowing public path: $targetPath');
         return null;
       }
+      print('DEBUG: Redirecting unauthenticated user to /login');
       return '/login';
     }
 
     // B. AUTHENTICATED REDIRECTS (Block login/register pages)
     if (isAuthenticated &&
         ['/login', '/register', '/otp-verification'].contains(targetPath)) {
+      print('DEBUG: Redirecting authenticated user from $targetPath to /');
       return '/';
     }
 
     // C. RBAC: PROVIDER DASHBOARD
     if (targetPath == '/provider-dashboard') {
       if (userRole == Role.provider) {
+        print('DEBUG: Allowing provider access to /provider-dashboard');
         return null;
       } else {
+        print('DEBUG: Redirecting non-provider from /provider-dashboard to /');
         return '/';
       }
     }
 
-    // 🆕 D. RBAC: MY BOOKINGS PAGE (Customers only)
-    if (targetPath == '/my-bookings') {
-      if (userRole != Role.customer) {
-        return '/'; // redirect non-customers home
-      }
-    }
-
-    // 🆕 E. RBAC: INCOMING REQUESTS (Providers only)
+    // D. RBAC: INCOMING REQUESTS (Providers only)
     if (targetPath == '/incoming-requests') {
       if (userRole != Role.provider) {
-        return '/'; // redirect non-providers home
+        print('DEBUG: Redirecting non-provider from /incoming-requests to /');
+        return '/';
       }
+      print('DEBUG: Allowing provider access to /incoming-requests');
+      return null;
+    }
+
+    // E. RBAC: CHAT PAGE (Customers and Providers only)
+    if (targetPath.startsWith('/chat')) {
+      if (!isAuthenticated) {
+        print('DEBUG: Redirecting unauthenticated user from $targetPath to /login');
+        return '/login';
+      }
+      // Check if userRole is customer or provider (using enum comparison)
+      if (userRole != Role.customer && userRole != Role.provider) {
+        print('DEBUG: Redirecting non-customer/provider from $targetPath to /login');
+        return '/login';
+      }
+      // Additional check: Ensure user is part of the booking
+      final pathSegments = state.uri.path.split('/');
+      if (pathSegments.length >= 5) {
+        final customerId = pathSegments[3];
+        final providerId = pathSegments[4];
+        if (userId != customerId && userId != providerId) {
+          print('DEBUG: Redirecting user $userId from $targetPath to / (not part of booking)');
+          return '/';
+        }
+      }
+      print('DEBUG: Allowing access to $targetPath for user $userId');
+      return null;
     }
 
     // F. RBAC: Prevent providers/admin from registration page
     if (targetPath == '/provider-registration') {
       if (userRole == Role.provider || userRole == Role.admin) {
+        print('DEBUG: Redirecting provider/admin from /provider-registration to /');
         return '/';
       }
     }
 
+    print('DEBUG: No redirect needed for $targetPath');
     return null;
   },
 

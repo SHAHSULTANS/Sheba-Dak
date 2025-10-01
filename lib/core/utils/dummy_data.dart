@@ -8,8 +8,27 @@ import '../../features/provider/domain/entities/service_provider.dart';
 import '../../../features/provider/domain/entities/provider_application.dart';
 // 🆕 Import BookingEntity
 import '../../features/booking/domain/entities/booking_entity.dart';
+import '../../features/chat/domain/entities/chat_message.dart';
 
 class DummyData {
+
+  //chat message week 6.
+  static List<ChatMessage> _messages = [];
+
+  static void addMessage(ChatMessage message) {
+    _messages.add(message);
+  }
+
+  static List<ChatMessage> getMessagesByBooking(String bookingId) {
+    return _messages
+        .where((m) => m.bookingId == bookingId)
+        .toList()
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));  // Sort by time.
+  }
+
+
+
+
   // ==============================
   // 🆕 Store for pending provider applications (Week 16)
   // ==============================

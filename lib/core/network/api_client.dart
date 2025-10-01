@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:smartsheba/features/chat/domain/entities/chat_message.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../features/booking/domain/entities/booking_entity.dart';
@@ -138,21 +139,52 @@ class ApiClient {
   }
 
 
+    // ============================
+  // 🆕 Get Bookings By User API
   // ============================
-// 🆕 Get Bookings By User API
-// ============================
-static Future<List<BookingEntity>> getBookingsByUser(
-    String userId, String role) async {
-  await Future.delayed(const Duration(seconds: 1)); // simulate network delay
+  static Future<List<BookingEntity>> getBookingsByUser(
+      String userId, String role) async {
+    await Future.delayed(const Duration(seconds: 1)); // simulate network delay
 
-  final bookings = DummyData.getInternalBookingsList();
+    final bookings = DummyData.getInternalBookingsList();
 
-  if (role == 'provider') {
-    // provider হিসেবে শুধুমাত্র providerId ম্যাচ করুন
-    return bookings.where((b) => b.providerId == userId).toList();
-  } else {
-    // customer হিসেবে শুধুমাত্র customerId ম্যাচ করুন
-    return bookings.where((b) => b.customerId == userId).toList();
+    if (role == 'provider' || role == 'provider') {
+      // provider হিসেবে শুধুমাত্র providerId ম্যাচ করুন
+      return bookings.where((b) => b.providerId == userId).toList();
+    } else {
+      // customer হিসেবে শুধুমাত্র customerId ম্যাচ করুন
+      return bookings.where((b) => b.customerId == userId).toList();
+    }
   }
-}
+
+
+
+
+
+  static Future<Map<String, dynamic>> sendMessage(ChatMessage message, String authUserId, String bookingCustomerId, String bookingProviderId) async {
+    await Future.delayed(const Duration(seconds: 1));
+    if (authUserId != bookingCustomerId && authUserId != bookingProviderId) {
+      throw Exception('Unauthorized: User not part of this booking');
+    }
+    final newMessage = ChatMessage(
+      id: const Uuid().v4(),
+      bookingId: message.bookingId,
+      senderId: message.senderId,
+      recipientId: message.recipientId,
+      message: message.message,
+      timestamp: DateTime.now(),
+    );
+    DummyData.addMessage(newMessage);
+    return {'success': true, 'message': 'Message sent'};
+  }
+
+  static Future<List<ChatMessage>> fetchMessages(String bookingId, String authUserId, String bookingCustomerId, String bookingProviderId) async {
+    await Future.delayed(const Duration(seconds: 1));
+    if (authUserId != bookingCustomerId && authUserId != bookingProviderId) {
+      throw Exception('Unauthorized: User not part of this booking');
+    }
+    return DummyData.getMessagesByBooking(bookingId);
+  }
+
+
 }
