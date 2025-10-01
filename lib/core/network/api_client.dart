@@ -27,10 +27,10 @@ class ApiClient {
         'success': true,
         'token': 'dummy_jwt_token',
         'user': {
-          'id': 'e8e616e0-d894-4936-a3f5-391682ee794c',
+          'id': 'provider1',
           'name': 'Test User',
           'phone_number': phoneNumber,
-          'role': 'customer'
+          'role': 'provider'
         }
       };
     } else {

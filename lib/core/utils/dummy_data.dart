@@ -50,15 +50,48 @@ class DummyData {
   }
 
 
-  /// কাস্টমার অনুযায়ী বুকিং তালিকা (Upcoming আগে দেখাবে)
-static List<BookingEntity> getBookingsByCustomer(String customerId) {
-  return _bookings
-      .where((b) => b.customerId == customerId)
-      .toList()
-    ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
-}
+      /// কাস্টমার অনুযায়ী বুকিং তালিকা (Upcoming আগে দেখাবে)
+    static List<BookingEntity> getBookingsByCustomer(String customerId) {
+      return _bookings
+          .where((b) => b.customerId == customerId)
+          .toList()
+        ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+    }
+
+    // ... existing imports and _bookings
+    static List<BookingEntity> getPendingBookingsByProvider(String providerId) {
+      return _bookings
+          .where((b) => b.providerId == providerId && b.status == BookingStatus.pending)
+          .toList()
+        ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));  // Sort by date.
+    }
   // 🆕 Internal access for ApiClient (mutable list)
   static List<BookingEntity> getInternalBookingsList() => _bookings;
+
+
+
+  static void initDummyBookings() {
+        addBooking(BookingEntity(
+          id: 'booking1',
+          customerId: 'customer1',
+          providerId: 'provider1', // ম্যাচ করুন ApiClient-এর user.id-এর সাথে
+          serviceCategory: 'plumbing',
+          scheduledAt: DateTime.now().add(Duration(days: 1)),
+          status: BookingStatus.pending,
+          price: 500.0,
+          description: 'Dummy Plumbing Booking',
+        ));
+        addBooking(BookingEntity(
+          id: 'booking2',
+          customerId: 'customer2',
+          providerId: 'provider1',
+          serviceCategory: 'electrical',
+          scheduledAt: DateTime.now().add(Duration(days: 2)),
+          status: BookingStatus.pending,
+          price: 800.0,
+          description: 'Dummy Electrical Booking',
+        ));
+      }
 
   // ==============================
   // Existing Service & Provider Data

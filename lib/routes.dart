@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:smartsheba/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
 import 'package:smartsheba/features/auth/presentation/pages/profile_veiw.dart';
+import 'package:smartsheba/features/booking/presentation/pages/incoming_requests_page.dart';
 
 // --- Auth Page Imports ---
 import 'features/auth/presentation/pages/login_page.dart';
@@ -129,6 +130,12 @@ final GoRouter appRouter = GoRouter(
       path: '/provider-registration',
       builder: (context, state) => const ProviderRegistrationPage(),
     ),
+
+    // 🆕 INCOMING REQUESTS ROUTE (Providers only)
+    GoRoute(
+      path: '/incoming-requests',
+      builder: (context, state) => const IncomingRequestsPage(),
+    ),
   ],
 
   // --- REDIRECT LOGIC ---
@@ -181,7 +188,14 @@ final GoRouter appRouter = GoRouter(
       }
     }
 
-    // E. RBAC: Prevent providers/admin from registration page
+    // 🆕 E. RBAC: INCOMING REQUESTS (Providers only)
+    if (targetPath == '/incoming-requests') {
+      if (userRole != Role.provider) {
+        return '/'; // redirect non-providers home
+      }
+    }
+
+    // F. RBAC: Prevent providers/admin from registration page
     if (targetPath == '/provider-registration') {
       if (userRole == Role.provider || userRole == Role.admin) {
         return '/';
