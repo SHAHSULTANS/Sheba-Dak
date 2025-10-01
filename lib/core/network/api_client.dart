@@ -31,7 +31,7 @@ class ApiClient {
           'id': 'provider1',
           'name': 'Test User',
           'phone_number': phoneNumber,
-          'role': 'provider'
+          'role': 'customer'
         }
       };
     } else {
