@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartsheba/core/utils/dummy_data.dart';
+import 'package:smartsheba/features/booking/presentation/bloc/booking_bloc.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'routes.dart';
@@ -14,8 +15,10 @@ void main() async {
 
   runApp(
     MultiBlocProvider(
-      providers: [
-        BlocProvider<AuthBloc>(create: (context) => AuthBloc()),
+       providers: [
+        BlocProvider(create: (_) => AuthBloc()),
+        BlocProvider(create: (_) => BookingBloc()), // <-- add here
+        // other blocs...
       ],
       child: MyApp(prefs: prefs),
     ),

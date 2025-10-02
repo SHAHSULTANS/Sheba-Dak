@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:smartsheba/core/network/api_client.dart';
-import '../../../../features/booking/domain/entities/booking_entity.dart';
 import '../../../provider/domain/entities/provider_application.dart';
 import '../../domain/entities/user_entity.dart';
 
@@ -47,30 +46,6 @@ class UpdateProfileEvent extends AuthEvent {
 class SubmitProviderApplicationEvent extends AuthEvent {
   final ProviderApplication application;
   SubmitProviderApplicationEvent(this.application);
-}
-
-class CreateBookingEvent extends AuthEvent {
-  final String providerId;
-  final String serviceCategory;
-  final DateTime scheduledAt;
-  final double price;
-  final String? description;
-
-  CreateBookingEvent({
-    required this.providerId,
-    required this.serviceCategory,
-    required this.scheduledAt,
-    required this.price,
-    this.description,
-  });
-}
-
-/// --- নতুন Event: Update Booking Status ---
-class UpdateBookingStatusEvent extends AuthEvent {
-  final String id;
-  final BookingStatus newStatus;
-
-  UpdateBookingStatusEvent(this.id, this.newStatus);
 }
 
 /// --- STATES ---
@@ -124,8 +99,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         final response = await ApiClient.verifyOtp(event.phoneNumber, event.otp);
         if (response['success']) {
           final userJson = response['user'] as Map<String, dynamic>;
-          final user =
-              UserEntity.fromJson({...userJson, 'token': response['token']});
+          final user = UserEntity.fromJson({...userJson, 'token': response['token']});
           final prefs = await SharedPreferences.getInstance();
           prefs.setString('user', jsonEncode(user.toJson()));
           emit(Authenticated(user));
@@ -205,65 +179,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     });
 
-    /// Create Booking
-    on<CreateBookingEvent>((event, emit) async {
-      final currentState = state;
-
-      if (currentState is Authenticated) {
-        emit(AuthLoading());
-        try {
-          final response = await ApiClient.createBooking(
-            currentState.user.id,
-            event.providerId,
-            event.serviceCategory,
-            event.scheduledAt,
-            event.price,
-            event.description,
-          );
-
-          if (response['success']) {
-            emit(Authenticated(currentState.user));
-          } else {
-            emit(AuthError('বুকিং ব্যর্থ হয়েছে। আবার চেষ্টা করুন।'));
-          }
-        } catch (e) {
-          emit(AuthError('বুকিং করার সময় ত্রুটি: $e'));
-        }
-      } else {
-        emit(AuthError('বুকিং দিতে লগইন করতে হবে।'));
-      }
-    });
-
-    /// Update Booking Status (RBAC)
-    on<UpdateBookingStatusEvent>((event, emit) async {
-      final currentState = state;
-
-      if (currentState is Authenticated &&
-          currentState.user.role == Role.provider) {
-        emit(AuthLoading());
-
-        try {
-          final authRole = currentState.user.role.toString().split('.').last;
-
-          final response = await ApiClient.updateBookingStatus(
-            event.id,
-            event.newStatus,
-            authRole,
-          );
-
-          if (response['success']) {
-            emit(Authenticated(currentState.user));
-          } else {
-            emit(AuthError('স্ট্যাটাস আপডেট ব্যর্থ হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।'));
-          }
-        } catch (e) {
-          emit(AuthError('স্ট্যাটাস আপডেট করার সময় ত্রুটি হয়েছে: ${e.toString()}'));
-        }
-      } else {
-        emit(AuthError('অনুমোদিত নয়: শুধুমাত্র প্রদানকারীরা স্ট্যাটাস আপডেট করতে পারে।'));
-      }
-    });
-
     _loadSavedUser();
   }
 
@@ -281,4 +196,3 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 }
-
