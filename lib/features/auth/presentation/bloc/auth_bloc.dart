@@ -101,7 +101,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           final userJson = response['user'] as Map<String, dynamic>;
           final user = UserEntity.fromJson({...userJson, 'token': response['token']});
           final prefs = await SharedPreferences.getInstance();
-          prefs.setString('user', jsonEncode(user.toJson()));
+          await prefs.setString('user', jsonEncode(user.toJson()));
           emit(Authenticated(user));
         } else {
           emit(AuthError('OTP ভুল হয়েছে'));
@@ -111,11 +111,41 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     });
 
-    /// Logout
+    /// Logout - FIXED VERSION
     on<LogoutEvent>((event, emit) async {
-      final prefs = await SharedPreferences.getInstance();
-      prefs.remove('user');
-      emit(Unauthenticated());
+      print('🔄 LOGOUT: Starting logout process...');
+      
+      // Immediately show loading state
+      emit(AuthLoading());
+      
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        print('🔄 LOGOUT: SharedPreferences instance obtained');
+        
+        // Check if user data exists before removing
+        final userExists = prefs.containsKey('user');
+        print('🔄 LOGOUT: User data exists: $userExists');
+        
+        if (userExists) {
+          await prefs.remove('user');
+          print('✅ LOGOUT: User data removed from SharedPreferences');
+        } else {
+          print('ℹ️ LOGOUT: No user data found to remove');
+        }
+        
+        // Clear any other related data if needed
+        await prefs.reload();
+        print('✅ LOGOUT: SharedPreferences reloaded');
+        
+        // Ensure we emit Unauthenticated state
+        emit(Unauthenticated());
+        print('✅ LOGOUT: Successfully emitted Unauthenticated state');
+        
+      } catch (e) {
+        print('❌ LOGOUT ERROR: $e');
+        // Even if there's an error, we should emit Unauthenticated
+        emit(Unauthenticated());
+      }
     });
 
     /// Enhanced Profile Update
@@ -142,10 +172,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           );
 
           final prefs = await SharedPreferences.getInstance();
-          prefs.setString('user', jsonEncode(updatedUser.toJson()));
+          await prefs.setString('user', jsonEncode(updatedUser.toJson()));
 
-          await Future.delayed(const Duration(seconds: 1));
-
+          // Remove artificial delay for better performance
           emit(Authenticated(updatedUser));
         } catch (e) {
           emit(AuthError('প্রোফাইল আপডেটে ত্রুটি: $e'));
@@ -166,8 +195,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       emit(AuthLoading());
       try {
-        final response =
-            await ApiClient.submitProviderApplication(event.application);
+        final response = await ApiClient.submitProviderApplication(event.application);
 
         if (response['success']) {
           emit(Authenticated(currentState.user));
@@ -179,18 +207,43 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     });
 
+    // Load saved user - FIXED VERSION
     _loadSavedUser();
   }
 
+  // FIXED: Improved user loading with better error handling
   void _loadSavedUser() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedUserJson = prefs.getString('user');
-    if (savedUserJson != null) {
-      try {
+    print('🔄 AUTH: Loading saved user from SharedPreferences...');
+    
+    // Don't load if we're already in a specific state
+    if (state is! AuthInitial) {
+      print('ℹ️ AUTH: Skipping load - already in state: ${state.runtimeType}');
+      return;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedUserJson = prefs.getString('user');
+      
+      if (savedUserJson != null && savedUserJson.isNotEmpty) {
+        print('✅ AUTH: Found saved user data');
         final userMap = jsonDecode(savedUserJson) as Map<String, dynamic>;
         final user = UserEntity.fromJson(userMap);
-        emit(Authenticated(user));
-      } catch (e) {
+        
+        // Only emit if we're still in initial state
+        if (state is AuthInitial) {
+          emit(Authenticated(user));
+          print('✅ AUTH: Successfully loaded and authenticated user');
+        }
+      } else {
+        print('ℹ️ AUTH: No saved user found, remaining unauthenticated');
+        if (state is AuthInitial) {
+          emit(Unauthenticated());
+        }
+      }
+    } catch (e) {
+      print('❌ AUTH ERROR: Failed to load user: $e');
+      if (state is AuthInitial) {
         emit(Unauthenticated());
       }
     }
