@@ -34,7 +34,6 @@ class ProviderDashboardPage extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {
-              // ভবিষ্যতে নোটিফিকেশন পেজে লিঙ্ক করুন
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('নোটিফিকেশন ফিচার শীঘ্রই আসছে!')),
               );
@@ -51,7 +50,7 @@ class ProviderDashboardPage extends StatelessWidget {
       body: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
           if (state is Authenticated && state.user.role == Role.provider) {
-            final bookings = DummyData.getPendingBookingsByProvider(state.user.id);
+            final pendingBookings = DummyData.getPendingBookingsByProvider(state.user.id);
             return SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
               child: Column(
@@ -100,7 +99,7 @@ class ProviderDashboardPage extends StatelessWidget {
                       _buildStatCard(
                         context,
                         title: 'আজকের রিকোয়েস্ট',
-                        value: bookings.length.toString(),
+                        value: pendingBookings.length.toString(),
                         icon: Icons.event_available,
                         color: Colors.green,
                       ),
@@ -116,7 +115,7 @@ class ProviderDashboardPage extends StatelessWidget {
 
                   const SizedBox(height: 32),
 
-                  // Recent Requests Section
+                  // Pending Requests Section
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -137,7 +136,7 @@ class ProviderDashboardPage extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  bookings.isEmpty
+                  pendingBookings.isEmpty
                       ? Center(
                           child: Column(
                             children: [
@@ -160,12 +159,37 @@ class ProviderDashboardPage extends StatelessWidget {
                       : ListView.builder(
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
-                          itemCount: bookings.length > 3 ? 3 : bookings.length, // শুধু ৩টি দেখাবে
+                          itemCount: pendingBookings.length > 3 ? 3 : pendingBookings.length,
                           itemBuilder: (context, index) {
-                            final booking = bookings[index];
+                            final booking = pendingBookings[index];
                             return _buildBookingCard(context, booking, theme);
                           },
                         ),
+
+                  const SizedBox(height: 32),
+
+                  // Confirmed Bookings Section
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'গ্রহণকৃত বুকিংস',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => context.go('/confirmed-bookings'),
+                        child: const Text(
+                          'সব দেখুন',
+                          style: TextStyle(color: Colors.blue),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildConfirmedBookingsPreview(context, state.user.id, theme),
                 ],
               ),
             );
@@ -242,7 +266,7 @@ class ProviderDashboardPage extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => context.go('/incoming-requests'), // বিস্তারিত দেখতে পেজে যান
+        onTap: () => context.go('/incoming-requests'),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Row(
@@ -296,6 +320,72 @@ class ProviderDashboardPage extends StatelessWidget {
     );
   }
 
+  Widget _buildConfirmedBookingsPreview(BuildContext context, String providerId, ThemeData theme) {
+    final confirmedBookings = DummyData.getBookingsByProvider(providerId)
+        .where((booking) =>
+            booking.status == BookingStatus.confirmed ||
+            booking.status == BookingStatus.inProgress)
+        .toList()
+      ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+
+    if (confirmedBookings.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.check_circle_outline, color: Colors.grey.shade400),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'কোনো গ্রহণকৃত বুকিং নেই\nইনকামিং রিকোয়েস্ট থেকে বুকিং গ্রহণ করুন',
+                style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      children: confirmedBookings.take(2).map((booking) => Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.only(bottom: 8),
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor: _getStatusColor(booking.status).withOpacity(0.1),
+            child: Icon(
+              _getStatusIcon(booking.status),
+              color: _getStatusColor(booking.status),
+              size: 20,
+            ),
+          ),
+          title: Text(
+            booking.serviceCategory,
+            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+          ),
+          subtitle: Text(
+            '${_formatDate(booking.scheduledAt)} - ${_formatTime(booking.scheduledAt)}',
+            style: theme.textTheme.bodySmall,
+          ),
+          trailing: Text(
+            _getStatusText(booking.status),
+            style: TextStyle(
+              color: _getStatusColor(booking.status),
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+          onTap: () => context.go('/confirmed-bookings'),
+        ),
+      )).toList(),
+    );
+  }
+
   IconData _getCategoryIcon(String category) {
     switch (category.toLowerCase()) {
       case 'plumbing':
@@ -307,5 +397,43 @@ class ProviderDashboardPage extends StatelessWidget {
       default:
         return Icons.build;
     }
+  }
+
+  // Helpers for confirmed bookings
+  Color _getStatusColor(BookingStatus status) {
+    switch (status) {
+      case BookingStatus.confirmed: return Colors.green;
+      case BookingStatus.inProgress: return Colors.blue;
+      case BookingStatus.completed: return Colors.green.shade700;
+      case BookingStatus.cancelled: return Colors.red;
+      case BookingStatus.pending: return Colors.orange;
+    }
+  }
+
+  IconData _getStatusIcon(BookingStatus status) {
+    switch (status) {
+      case BookingStatus.confirmed: return Icons.check_circle_outline;
+      case BookingStatus.inProgress: return Icons.build_circle_outlined;
+      case BookingStatus.completed: return Icons.verified;
+      case BookingStatus.cancelled: return Icons.cancel;
+      case BookingStatus.pending: return Icons.pending_actions;
+    }
+  }
+
+  String _getStatusText(BookingStatus status) {
+    switch (status) {
+      case BookingStatus.confirmed: return 'গ্রহণকৃত';
+      case BookingStatus.inProgress: return 'চলমান';
+      case BookingStatus.completed: return 'সম্পন্ন';
+      case BookingStatus.cancelled: return 'বাতিল';
+      case BookingStatus.pending: return 'অপেক্ষমাণ';
+    }
+  }
+
+  String _formatDate(DateTime date) => '${date.day}-${date.month}-${date.year}';
+
+  String _formatTime(DateTime date) {
+    final time = TimeOfDay.fromDateTime(date);
+    return '${time.hour}:${time.minute.toString().padLeft(2, '0')}';
   }
 }

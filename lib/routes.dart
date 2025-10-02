@@ -7,6 +7,7 @@ import 'package:smartsheba/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
 import 'package:smartsheba/features/auth/presentation/pages/profile_veiw.dart';
 import 'package:smartsheba/features/booking/presentation/pages/incoming_requests_page.dart';
+import 'package:smartsheba/features/provider/presentation/pages/provider_confirmed_booking.dart';
 
 // --- Auth Page Imports ---
 import 'features/auth/presentation/pages/login_page.dart';
@@ -147,6 +148,11 @@ final GoRouter appRouter = GoRouter(
         providerId: state.pathParameters['providerId']!,
       ),
     ),
+
+    GoRoute(
+      path: '/confirmed-bookings',
+      builder: (context, state) => const ConfirmedBookingsPage(),
+    ),    
   ],
 
   // --- REDIRECT LOGIC ---
