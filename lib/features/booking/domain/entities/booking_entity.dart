@@ -1,9 +1,8 @@
-// lib/features/booking/domain/entities/booking_entity.dart
-
 enum BookingStatus {
   pending,
+  paymentPending, // Added for payment initiation
   confirmed,
-  inProgress, // Keep only one style
+  inProgress,
   completed,
   cancelled,
 }
@@ -38,6 +37,7 @@ class BookingEntity {
       scheduledAt: DateTime.parse(json['scheduled_at'] as String),
       status: BookingStatus.values.firstWhere(
         (s) => s.toString().split('.').last == (json['status'] as String),
+        orElse: () => BookingStatus.pending,
       ),
       price: (json['price'] as num).toDouble(),
       description: json['description'] as String?,

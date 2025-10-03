@@ -32,6 +32,9 @@ import 'features/provider/presentation/pages/provider_registration_page.dart';
 import 'features/booking/presentation/pages/book_service_page.dart';
 import 'features/booking/presentation/pages/my_bookings_page.dart';
 
+// --- Payment Page Imports ---
+import 'features/payment/presentation/pages/payment_page.dart';
+
 // --- Chat Page Imports ---
 import 'features/chat/presentation/pages/chat_page.dart';
 
@@ -108,6 +111,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/my-bookings',
       builder: (context, state) => const MyBookingsPage(),
+    ),
+
+    // --- PAYMENT ROUTE ---
+    GoRoute(
+      path: '/payment/:bookingId',
+      builder: (context, state) => PaymentPage(
+        bookingId: state.pathParameters['bookingId']!,
+      ),
     ),
 
     // --- PROVIDER MANAGEMENT ROUTES ---
@@ -215,7 +226,21 @@ final GoRouter appRouter = GoRouter(
       return null;
     }
 
-    // E. RBAC: CHAT PAGE (Customers and Providers only)
+    // E. RBAC: PAYMENT PAGE (Customers only)
+    if (targetPath.startsWith('/payment')) {
+      if (!isAuthenticated) {
+        print('DEBUG: Redirecting unauthenticated user from $targetPath to /login');
+        return '/login';
+      }
+      if (userRole != Role.customer) {
+        print('DEBUG: Redirecting non-customer from $targetPath to /login');
+        return '/login';
+      }
+      print('DEBUG: Allowing customer access to $targetPath');
+      return null;
+    }
+
+    // F. RBAC: CHAT PAGE (Customers and Providers only)
     if (targetPath.startsWith('/chat')) {
       if (!isAuthenticated) {
         print('DEBUG: Redirecting unauthenticated user from $targetPath to /login');
@@ -240,7 +265,7 @@ final GoRouter appRouter = GoRouter(
       return null;
     }
 
-    // F. RBAC: Prevent providers/admin from registration page
+    // G. RBAC: Prevent providers/admin from registration page
     if (targetPath == '/provider-registration') {
       if (userRole == Role.provider || userRole == Role.admin) {
         print('DEBUG: Redirecting provider/admin from /provider-registration to /');
