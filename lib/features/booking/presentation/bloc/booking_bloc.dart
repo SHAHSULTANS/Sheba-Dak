@@ -5,7 +5,7 @@ import '../../domain/entities/booking_entity.dart';
 abstract class BookingEvent {}
 
 class CreateBookingEvent extends BookingEvent {
-  final String customerId; // pass from widget (authState.user.id)
+  final String customerId;
   final String providerId;
   final String serviceCategory;
   final DateTime scheduledAt;
@@ -25,7 +25,7 @@ class CreateBookingEvent extends BookingEvent {
 class UpdateBookingStatusEvent extends BookingEvent {
   final String id;
   final BookingStatus newStatus;
-  final String authRole; // pass role from UI
+  final String authRole;
 
   UpdateBookingStatusEvent({
     required this.id,
@@ -37,8 +37,14 @@ class UpdateBookingStatusEvent extends BookingEvent {
 abstract class BookingState {}
 
 class BookingInitial extends BookingState {}
+
 class BookingLoading extends BookingState {}
-class BookingSuccess extends BookingState {}
+
+class BookingSuccess extends BookingState {
+  final String bookingId; // Added for navigation
+  BookingSuccess(this.bookingId);
+}
+
 class BookingFailure extends BookingState {
   final String message;
   BookingFailure(this.message);
@@ -58,7 +64,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
           event.description,
         );
         if (response['success'] == true) {
-          emit(BookingSuccess());
+          emit(BookingSuccess(response['id']));
         } else {
           emit(BookingFailure(response['message'] ?? 'বুকিং ব্যর্থ হয়েছে'));
         }
@@ -76,7 +82,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
           event.authRole,
         );
         if (response['success'] == true) {
-          emit(BookingSuccess());
+          emit(BookingSuccess(event.id));
         } else {
           emit(BookingFailure(response['message'] ?? 'স্ট্যাটাস আপডেট ব্যর্থ হয়েছে'));
         }

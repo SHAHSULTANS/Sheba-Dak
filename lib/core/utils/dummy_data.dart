@@ -1,13 +1,12 @@
-// lib/core/utils/dummy_data.dart
-
+import 'package:uuid/uuid.dart'; // Uuid import
+import '../../features/booking/domain/entities/booking_entity.dart';
+import '../../features/auth/domain/entities/user_entity.dart'; // imported
 import '../../features/home/domain/entities/service_category.dart';
 import '../../features/home/domain/entities/service.dart';
 // Import the new provider entity
 import '../../features/provider/domain/entities/service_provider.dart';
-// 🆕 Import the provider application entity
+// Import the provider application entity
 import '../../../features/provider/domain/entities/provider_application.dart';
-// 🆕 Import BookingEntity
-import '../../features/booking/domain/entities/booking_entity.dart';
 import '../../features/chat/domain/entities/chat_message.dart';
 
 class DummyData {
@@ -27,49 +26,42 @@ class DummyData {
   }
 
 
-
-
   // ==============================
-  // 🆕 Store for pending provider applications (Week 16)
+  // Store for pending provider applications (Week 16)
   // ==============================
   static final List<ProviderApplication> _applications = [];
 
-  /// অ্যাডমিন রিভিউর জন্য নতুন অ্যাপ্লিকেশন যোগ করা
+  /// Add new application for admin review
   static void addProviderApplication(ProviderApplication application) {
     _applications.add(application);
     print(
         'DEBUG: New Provider Application Added: ${application.name} (Total: ${_applications.length})');
   }
 
-  /// অ্যাডমিন প্যানেলে অপেক্ষমাণ অ্যাপ্লিকেশন তালিকা
+  /// Pending applications list for admin panel
   static List<ProviderApplication> getPendingApplications() {
     return List.unmodifiable(_applications);
   }
 
   // ==============================
-  // 🆕 Store for Bookings (Week 6 Foundation)
+  // Store for Bookings (Week 6 Foundation)
   // ==============================
   static final List<BookingEntity> _bookings = [];
 
-  /// নতুন বুকিং যোগ করা
+  /// Add new booking
   static void addBooking(BookingEntity booking) {
     _bookings.add(booking);
     print(
         'DEBUG: New Booking Added: ${booking.id} for Customer ${booking.customerId}');
   }
 
-  /// কাস্টমার অনুযায়ী বুকিং তালিকা
-  // static List<BookingEntity> getBookingsByCustomer(String customerId) {
-  //   return _bookings.where((b) => b.customerId == customerId).toList();
-  // }
-
-  /// প্রোভাইডার অনুযায়ী বুকিং তালিকা
+  /// Get bookings by provider
   static List<BookingEntity> getBookingsByProvider(String providerId) {
     return _bookings.where((b) => b.providerId == providerId).toList();
   }
 
 
-      /// কাস্টমার অনুযায়ী বুকিং তালিকা (Upcoming আগে দেখাবে)
+      /// Get bookings by customer (Upcoming first)
     static List<BookingEntity> getBookingsByCustomer(String customerId) {
       return _bookings
           .where((b) => b.customerId == customerId)
@@ -77,38 +69,54 @@ class DummyData {
         ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
     }
 
-    // ... existing imports and _bookings
+    // UPDATED: Both 'pending' and 'paymentPending' bookings are now considered as incoming requests
     static List<BookingEntity> getPendingBookingsByProvider(String providerId) {
       return _bookings
-          .where((b) => b.providerId == providerId && b.status == BookingStatus.pending)
+          .where((b) =>
+              b.providerId == providerId &&
+              (b.status == BookingStatus.pending ||
+                b.status == BookingStatus.paymentPending)) // <-- UPDATED
           .toList()
         ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));  // Sort by date.
     }
-  // 🆕 Internal access for ApiClient (mutable list)
+  // Internal access for ApiClient (mutable list)
   static List<BookingEntity> getInternalBookingsList() => _bookings;
 
 
-
+  // UPDATED: Dummy data includes new status
   static void initDummyBookings() {
+        // Booking 1: Pending (Default for testing)
         addBooking(BookingEntity(
           id: 'booking1',
           customerId: 'customer1',
-          providerId: 'provider1', // ম্যাচ করুন ApiClient-এর user.id-এর সাথে
+          providerId: 'provider1', // Match with ApiClient user.id
           serviceCategory: 'plumbing',
-          scheduledAt: DateTime.now().add(Duration(days: 1)),
+          scheduledAt: DateTime.now().add(Duration(days: 1, hours: 10)),
           status: BookingStatus.pending,
           price: 500.0,
-          description: 'Dummy Plumbing Booking',
+          description: 'Dummy Plumbing Booking (Pending)',
         ));
+        // Booking 2: Payment Pending (New status for testing)
         addBooking(BookingEntity(
           id: 'booking2',
           customerId: 'customer2',
           providerId: 'provider1',
           serviceCategory: 'electrical',
-          scheduledAt: DateTime.now().add(Duration(days: 2)),
-          status: BookingStatus.pending,
+          scheduledAt: DateTime.now().add(Duration(days: 2, hours: 12)),
+          status: BookingStatus.paymentPending, // <-- UPDATED
           price: 800.0,
-          description: 'Dummy Electrical Booking',
+          description: 'Dummy Electrical Booking (Payment Pending)',
+        ));
+        // Booking 3: Confirmed (For Confirmed Bookings Page)
+        addBooking(BookingEntity(
+          id: 'booking3',
+          customerId: 'customer3',
+          providerId: 'provider1',
+          serviceCategory: 'cleaning',
+          scheduledAt: DateTime.now().add(Duration(hours: 5)),
+          status: BookingStatus.confirmed, // <-- Added confirmed booking
+          price: 1500.0,
+          description: 'Dummy Confirmed Cleaning Booking (Today)',
         ));
       }
 
@@ -122,106 +130,105 @@ class DummyData {
     Service(
         id: 'pipe-repair',
         categoryId: 'plumbing',
-        name: 'পাইপ মেরামত',
-        description: 'লিকিং পাইপ ফিক্স করুন এবং ওয়াটারপ্রুফিং নিশ্চিত করুন।',
+        name: 'Pipe Repair',
+        description: 'Fix leaking pipes and ensure waterproofing.',
         price: 500.0,
-        providerName: 'রহিম টেকনিশিয়ান'),
+        providerName: 'Rahim Technician'),
     Service(
         id: 'drain-clean',
         categoryId: 'plumbing',
-        name: 'ড্রেন ক্লিনিং',
-        description: 'ব্লকড ড্রেন পরিষ্কার করুন, যন্ত্রের মাধ্যমে দ্রুত সমাধান।',
+        name: 'Drain Cleaning',
+        description: 'Clean blocked drains with quick machine solutions.',
         price: 300.0,
-        providerName: 'করিম প্লাম্বার'),
+        providerName: 'Karim Plumber'),
     Service(
         id: 'toilet-fix',
         categoryId: 'plumbing',
-        name: 'টয়লেট ফিক্স',
-        description: 'টয়লেটের ফ্লাশিং মেরামত এবং নতুন পার্টস ইনস্টলেশন।',
+        name: 'Toilet Fix',
+        description: 'Repair toilet flushing and install new parts.',
         price: 450.0,
-        providerName: 'শফিক সার্ভিস'),
+        providerName: 'Shafiq Service'),
     // Electrical Services (3)
     Service(
         id: 'wiring-fix',
         categoryId: 'electrical',
-        name: 'ওয়্যারিং মেরামত',
-        description: 'বাসা বা অফিসের ওয়্যারিং সমস্যা সমাধান, শর্ট সার্কিট ফিক্সিং।',
+        name: 'Wiring Repair',
+        description: 'Solve home or office wiring problems, fix short circuits.',
         price: 600.0,
-        providerName: 'আমান ইলেকট্রিক'),
+        providerName: 'Aman Electric'),
     Service(
         id: 'light-fix',
         categoryId: 'electrical',
-        name: 'লাইট ফিক্সচার ইনস্টল',
-        description: 'লাইট, ফ্যান, বা সুইচ লাগানো এবং মেরামত।',
+        name: 'Light Fixture Install',
+        description: 'Install and repair lights, fans, or switches.',
         price: 200.0,
-        providerName: 'বিদ্যুৎ সেবা'),
+        providerName: 'Bidhut Service'),
     Service(
         id: 'circuit-break',
         categoryId: 'electrical',
-        name: 'সার্কিট ব্রেকার ফিক্স',
-        description: 'ত্রুটিপূর্ণ সার্কিট ব্রেকার মেরামত ও নতুন ইনস্টলেশন।',
+        name: 'Circuit Breaker Fix',
+        description: 'Repair faulty circuit breakers and new installations.',
         price: 750.0,
-        providerName: 'ইলেক্ট্রো সল্যুশন'),
+        providerName: 'Electro Solution'),
     // Cleaning Services (3)
     Service(
         id: 'deep-clean',
         categoryId: 'cleaning',
-        name: 'ডিপ ক্লিনিং',
-        description:
-            'সম্পূর্ণ বাসার গভীরভাবে পরিষ্কার, কিচেন ও বাথরুম বিশেষ যত্ন।',
+        name: 'Deep Cleaning',
+        description: 'Deep clean entire home with special kitchen and bathroom care.',
         price: 2500.0,
-        providerName: 'শাইন ক্লিনার্স'),
+        providerName: 'Shine Cleaners'),
     Service(
         id: 'carpet-clean',
         categoryId: 'cleaning',
-        name: 'কার্পেট ক্লিনিং',
-        description: 'পেশাদার কার্পেট ধোয়া এবং স্টীম ক্লিনিং সার্ভিস।',
+        name: 'Carpet Cleaning',
+        description: 'Professional carpet washing and steam cleaning service.',
         price: 800.0,
-        providerName: 'ক্লিন অ্যান্ড কেয়ার'),
+        providerName: 'Clean and Care'),
     Service(
         id: 'sofa-clean',
         categoryId: 'cleaning',
-        name: 'সোফা ক্লিনিং',
-        description: 'সোফা ও আসবাবপত্র পরিষ্কার, ফেব্রিক ও লেদার যত্নের সার্ভিস।',
+        name: 'Sofa Cleaning',
+        description: 'Clean sofas and furniture with fabric and leather care service.',
         price: 1000.0,
-        providerName: 'ফার্নিচার শাইন'),
+        providerName: 'Furniture Shine'),
     // Painting Services (3)
     Service(
         id: 'wall-paint',
         categoryId: 'painting',
-        name: 'দেয়াল পেইন্টিং',
-        description: 'রং করা ও ফিনিশিং, প্রিমিয়াম কোয়ালিটির রং ব্যবহার।',
+        name: 'Wall Painting',
+        description: 'Painting and finishing with premium quality paint.',
         price: 800.0,
-        providerName: 'পেইন্ট মাষ্টার'),
+        providerName: 'Paint Master'),
     Service(
         id: 'wood-polish',
         categoryId: 'painting',
-        name: 'কাঠের পলিশ',
-        description: 'কাঠের আসবাবে বার্নিশ ও পলিশ, দীর্ঘস্থায়ী গ্লস।',
+        name: 'Wood Polish',
+        description: 'Varnish and polish wooden furniture for lasting gloss.',
         price: 950.0,
-        providerName: 'গ্লোরি পেইন্ট'),
+        providerName: 'Glory Paint'),
     Service(
         id: 'texture-paint',
         categoryId: 'painting',
-        name: 'টেক্সচার পেইন্ট',
-        description: 'আধুনিক টেক্সচার পেইন্টিং, বিশেষজ্ঞ ডিজাইনারের পরামর্শ।',
+        name: 'Texture Paint',
+        description: 'Modern texture painting with expert designer consultation.',
         price: 1500.0,
-        providerName: 'আর্ট হোম'),
+        providerName: 'Art Home'),
     // Movers & Emergency
     Service(
         id: 'home-move',
         categoryId: 'movers',
-        name: 'বাসা বদল',
-        description: 'সম্পূর্ণ বাসা স্থানান্তরের সেবা',
+        name: 'Home Moving',
+        description: 'Complete home relocation service',
         price: 8000.0,
-        providerName: 'মুভার্স বিডি'),
+        providerName: 'Movers BD'),
     Service(
         id: 'ambulance',
         categoryId: 'emergency',
-        name: 'অ্যাম্বুলেন্স',
-        description: 'জরুরী চিকিত্সা সেবা',
+        name: 'Ambulance',
+        description: 'Emergency medical service',
         price: 1000.0,
-        providerName: 'ইমার্জেন্সি রেসপন্স'),
+        providerName: 'Emergency Response'),
   ];
 
   // --- Existing getServiceCategories (No change needed) ---
@@ -229,79 +236,79 @@ class DummyData {
     return const [
       ServiceCategory(
           id: 'plumbing',
-          name: 'প্লাম্বিং',
+          name: 'Plumbing',
           iconPath: 'assets/icons/plumbing.png',
-          description: 'পাইপ লিক, ড্রেন ব্লক ইত্যাদি'),
+          description: 'Pipe leaks, drain blocks etc'),
       ServiceCategory(
           id: 'electrical',
-          name: 'বিদ্যুৎ',
+          name: 'Electrical',
           iconPath: 'assets/icons/electrical.png',
-          description: 'ওয়্যারিং, লাইট ফিক্সচার ইত্যাদি'),
+          description: 'Wiring, light fixtures etc'),
       ServiceCategory(
           id: 'cleaning',
-          name: 'পরিষ্কার-পরিচ্ছন্নতা',
+          name: 'Cleaning',
           iconPath: 'assets/icons/cleaning.png',
-          description: 'বাসা, অফিস, গাড়ি পরিষ্কার'),
+          description: 'Home, office, car cleaning'),
       ServiceCategory(
           id: 'painting',
-          name: 'পেইন্টিং',
+          name: 'Painting',
           iconPath: 'assets/icons/painting.png',
-          description: 'বাসা বা অফিসের দেয়াল পেইন্টিং'),
+          description: 'Home or office wall painting'),
       ServiceCategory(
           id: 'carpentry',
-          name: 'কাঠের কাজ',
+          name: 'Carpentry',
           iconPath: 'assets/icons/carpentry.png',
-          description: 'ফার্নিচার তৈরি ও মেরামত'),
+          description: 'Furniture making and repair'),
       ServiceCategory(
           id: 'ac_repair',
-          name: 'এসি মেরামত',
+          name: 'AC Repair',
           iconPath: 'assets/icons/ac_repair.png',
-          description: 'এসি ইনস্টলেশন ও মেরামত'),
+          description: 'AC installation and repair'),
       ServiceCategory(
           id: 'appliances',
-          name: 'অ্যাপ্লায়েন্স মেরামত',
+          name: 'Appliance Repair',
           iconPath: 'assets/icons/appliances.png',
-          description: 'ফ্রিজ, টিভি, ওয়াশিং মেশিন মেরামত'),
+          description: 'Fridge, TV, washing machine repair'),
       ServiceCategory(
           id: 'pest_control',
-          name: 'পোকামাকড় নিয়ন্ত্রণ',
+          name: 'Pest Control',
           iconPath: 'assets/icons/pest_control.png',
-          description: 'তেলাপোকা, ইঁদুর, পিঁপড়া দমন'),
+          description: 'Cockroach, rat, ant control'),
       ServiceCategory(
           id: 'laundry',
-          name: 'লন্ড্রি ও ড্রাই ক্লিনিং',
+          name: 'Laundry & Dry Cleaning',
           iconPath: 'assets/icons/laundry.png',
-          description: 'কাপড় ধোয়া ও ইস্ত্রি'),
+          description: 'Clothes washing and ironing'),
       ServiceCategory(
           id: 'beauty',
-          name: 'সৌন্দর্য সেবা',
+          name: 'Beauty Services',
           iconPath: 'assets/icons/beauty.png',
-          description: 'ঘরে বসে রূপচর্চা'),
+          description: 'Home beauty care'),
       ServiceCategory(
           id: 'car_wash',
-          name: 'গাড়ি ধোয়া',
+          name: 'Car Wash',
           iconPath: 'assets/icons/car_wash.png',
-          description: 'বাসা বা অফিসের সামনে গাড়ি ধোয়া'),
+          description: 'Car washing at home or office'),
       ServiceCategory(
           id: 'gardening',
-          name: 'বাগান করা',
+          name: 'Gardening',
           iconPath: 'assets/icons/gardening.png',
-          description: 'টবে গাছ লাগানো ও পরিচর্যা'),
+          description: 'Planting and plant care in pots'),
       ServiceCategory(
           id: 'photography',
-          name: 'ফটোগ্রাফি',
+          name: 'Photography',
           iconPath: 'assets/icons/photography.png',
-          description: 'অনুষ্ঠান বা ইভেন্টের জন্য ফটোগ্রাফার'),
+          description: 'Photographer for events'),
       ServiceCategory(
           id: 'movers',
-          name: 'বাসা বদল',
+          name: 'Home Moving',
           iconPath: 'assets/icons/movers.png',
-          description: 'বাসা বা অফিসের জিনিসপত্র স্থানান্তরের সেবা'),
+          description: 'Home or office relocation service'),
       ServiceCategory(
           id: 'emergency',
-          name: 'জরুরী সেবা',
+          name: 'Emergency Services',
           iconPath: 'assets/icons/emergency.png',
-          description: 'অ্যাম্বুলেন্স, ফায়ার সার্ভিস ইত্যাদি'),
+          description: 'Ambulance, fire service etc'),
     ];
   }
 
@@ -322,9 +329,8 @@ class DummyData {
       orElse: () => const Service(
         id: 'error',
         categoryId: '',
-        name: 'সেবা পাওয়া যায়নি',
-        description:
-            'অনুরোধ করা সেবাটি বর্তমানে পাওয়া যাচ্ছে না। অনুগ্রহ করে সার্ভিস লিস্টে ফিরে যান।',
+        name: 'Service Not Found',
+        description: 'The requested service is currently unavailable. Please return to service list.',
         price: 0,
         providerName: 'N/A',
       ),
@@ -337,11 +343,11 @@ class DummyData {
       (p) => p.id == providerId,
       orElse: () => const ServiceProvider(
         id: 'error',
-        name: 'প্রোভাইডার পাওয়া যায়নি',
+        name: 'Provider Not Found',
         rating: 0.0,
         isVerified: false,
         services: [],
-        description: 'অনুরোধ করা প্রোভাইডারকে খুঁজে পাওয়া যায়নি।',
+        description: 'The requested provider could not be found.',
       ),
     );
   }
@@ -351,46 +357,44 @@ class DummyData {
     return const [
       ServiceProvider(
         id: 'provider1',
-        name: 'রহিম টেকনিশিয়ান',
+        name: 'Rahim Technician',
         rating: 4.5,
         isVerified: true,
         services: ['pipe-repair', 'drain-clean', 'toilet-fix'], // Plumbing
-        description: 'পাঁচ বছরের অভিজ্ঞতাসম্পন্ন দক্ষ প্লাম্বার। দ্রুত ও নির্ভরযোগ্য সেবা নিশ্চিত করি।',
+        description: 'Five years experienced skilled plumber. Ensure fast and reliable service.',
       ),
       ServiceProvider(
         id: 'provider2',
-        name: 'আমান ইলেকট্রিক',
+        name: 'Aman Electric',
         rating: 4.0,
         isVerified: false,
         services: ['wiring-fix', 'light-fix', 'circuit-break'], // Electrical
-        description: 'বিদ্যুৎ বিশেষজ্ঞ। বাসা বা অফিসের যেকোনো জটিল ওয়্যারিং সমস্যা সমাধানে সক্ষম।',
+        description: 'Electrical specialist. Capable of solving any complex wiring problems in home or office.',
       ),
       ServiceProvider(
         id: 'provider3',
-        name: 'শাইন ক্লিনার্স',
+        name: 'Shine Cleaners',
         rating: 4.8,
         isVerified: true,
         services: ['deep-clean', 'carpet-clean'], // Cleaning
-        description: 'আমরা আপনার বাসা বা অফিসকে জীবাণুমুক্ত করে গভীরভাবে পরিষ্কার করি।',
+        description: 'We deeply clean your home or office by making it germ-free.',
       ),
       ServiceProvider(
         id: 'provider4',
-        name: 'পেইন্ট মাষ্টার',
+        name: 'Paint Master',
         rating: 3.9,
         isVerified: true,
         services: ['wall-paint', 'texture-paint'], // Painting
-        description: 'পেশাদার পেইন্টিং সার্ভিস। আপনার দেয়ালকে নতুন জীবন দিন।',
+        description: 'Professional painting service. Give new life to your walls.',
       ),
       ServiceProvider(
         id: 'provider5',
-        name: 'কুল টেক',
+        name: 'Cool Tech',
         rating: 4.2,
         isVerified: false,
         services: ['ac-install', 'ac-service', 'gas-refill'], // AC Repair
-        description: 'সব ধরনের এসি ইনস্টলেশন, সার্ভিসিং এবং দ্রুত মেরামতের জন্য যোগাযোগ করুন।',
+        description: 'Contact for all types of AC installation, servicing and quick repairs.',
       ),
     ];
   }
 }
-
-

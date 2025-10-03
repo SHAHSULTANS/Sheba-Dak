@@ -134,7 +134,7 @@ class ServiceDetailPage extends StatelessWidget {
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: () => context.go(
-                        '/booking/$providerId/$serviceCategory/${price.toStringAsFixed(0)}',
+                        '/booking/$providerId/$serviceCategory/$price',
                       ),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),

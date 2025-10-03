@@ -5,6 +5,8 @@ import 'package:smartsheba/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:smartsheba/features/booking/presentation/bloc/booking_bloc.dart';
 import 'package:smartsheba/core/theme/app_theme.dart';
 import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
+import 'package:smartsheba/features/booking/domain/entities/booking_entity.dart';
+import 'package:smartsheba/core/network/api_client.dart';
 
 class BookServicePage extends StatefulWidget {
   final String providerId;
@@ -66,27 +68,44 @@ class _BookServicePageState extends State<BookServicePage> {
       ),
       body: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, authState) {
-          // Unauthorized / non-customer
           if (authState is! Authenticated) {
-            return _buildUnauthorizedMessage(
-                'বুকিং দেওয়ার জন্য আপনাকে লগইন করতে হবে।');
+            return _buildUnauthorizedMessage('বুকিং দেওয়ার জন্য আপনাকে লগইন করতে হবে।');
           }
           if (authState.user.role != Role.customer) {
-            return _buildUnauthorizedMessage(
-                'শুধুমাত্র গ্রাহকরাই বুকিং দিতে পারবেন।');
+            return _buildUnauthorizedMessage('শুধুমাত্র গ্রাহকরাই বুকিং দিতে পারবেন।');
           }
 
           return BlocConsumer<BookingBloc, BookingState>(
-            listener: (context, bookingState) {
+            listener: (context, bookingState) async {
               if (bookingState is BookingSuccess) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('বুকিং সফলভাবে তৈরি হয়েছে'),
-                    backgroundColor: Colors.green,
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-                context.go('/my-bookings');
+                final bookingId = bookingState.bookingId;
+                // Workaround: Fetch all bookings and find the one with matching ID
+                try {
+                  final allBookings = await ApiClient.getBookingsByUser(authState.user.id, 'customer');
+                  final booking = allBookings.firstWhere((b) => b.id == bookingId);
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('রিকোয়েস্ট পাঠানো হয়েছে! প্রোভাইডারের সাথে চ্যাট করে নিশ্চিত করুন।'),
+                      backgroundColor: Colors.orange,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  
+                  if (booking.status == BookingStatus.pending) {
+                    // Route to MyBookings to show pending with chat option
+                    context.go('/my-bookings');
+                  } else {
+                    // Rare: if auto-confirmed, go to payment
+                    context.go('/payment/$bookingId');
+                  }
+                } catch (e) {
+                  // Fallback on error: go to MyBookings
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('রুটিং ত্রুটি: $e। আমার বুকিংস দেখুন।')),
+                  );
+                  context.go('/my-bookings');
+                }
               } else if (bookingState is BookingFailure) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -108,16 +127,16 @@ class _BookServicePageState extends State<BookServicePage> {
                     _buildInfoCard(
                       icon: Icons.category_outlined,
                       title: 'পরিষেবা',
-                      child: Text(widget.serviceCategory,
-                          style: const TextStyle(fontSize: 16)),
+                      child: Text(widget.serviceCategory, style: const TextStyle(fontSize: 16)),
                     ),
                     const SizedBox(height: 16),
                     _buildInfoCard(
                       icon: Icons.attach_money,
                       title: 'মূল্য',
-                      child: Text('৳${widget.price.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: Text(
+                        '৳${widget.price.toStringAsFixed(0)}',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
                     ),
                     const SizedBox(height: 16),
                     _buildSelectableCard(
@@ -166,10 +185,10 @@ class _BookServicePageState extends State<BookServicePage> {
                               },
                         icon: isLoading
                             ? const SizedBox(
-                                width: 20, 
-                                height: 20, 
+                                width: 20,
+                                height: 20,
                                 child: CircularProgressIndicator(
-                                  strokeWidth: 2, 
+                                  strokeWidth: 2,
                                   color: Colors.white,
                                 ),
                               )
