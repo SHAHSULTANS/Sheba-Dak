@@ -50,6 +50,8 @@ class ProviderDashboardPage extends StatelessWidget {
       body: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
           if (state is Authenticated && state.user.role == Role.provider) {
+            // DummyData.getPendingBookingsByProvider should return bookings with status 'pending' OR 'paymentPending'
+            // Assuming DummyData is updated to include 'paymentPending' in pending requests
             final pendingBookings = DummyData.getPendingBookingsByProvider(state.user.id);
             return SingleChildScrollView(
               padding: const EdgeInsets.all(16.0),
@@ -310,7 +312,7 @@ class ProviderDashboardPage extends StatelessWidget {
               ),
               Icon(
                 Icons.circle,
-                color: Colors.orange,
+                color: Colors.orange, // Hardcoded orange for pending/paymentPending
                 size: 12,
               ),
             ],
@@ -399,34 +401,54 @@ class ProviderDashboardPage extends StatelessWidget {
     }
   }
 
-  // Helpers for confirmed bookings
+  // Helpers for confirmed bookings (UPDATED)
   Color _getStatusColor(BookingStatus status) {
     switch (status) {
-      case BookingStatus.confirmed: return Colors.green;
-      case BookingStatus.inProgress: return Colors.blue;
-      case BookingStatus.completed: return Colors.green.shade700;
-      case BookingStatus.cancelled: return Colors.red;
-      case BookingStatus.pending: return Colors.orange;
+      case BookingStatus.confirmed:
+        return Colors.green;
+      case BookingStatus.inProgress:
+        return Colors.blue;
+      case BookingStatus.completed:
+        return Colors.green.shade700;
+      case BookingStatus.cancelled:
+        return Colors.red;
+      case BookingStatus.pending:
+      case BookingStatus.paymentPending: // <-- ADDED
+        return Colors.orange;
     }
   }
 
   IconData _getStatusIcon(BookingStatus status) {
     switch (status) {
-      case BookingStatus.confirmed: return Icons.check_circle_outline;
-      case BookingStatus.inProgress: return Icons.build_circle_outlined;
-      case BookingStatus.completed: return Icons.verified;
-      case BookingStatus.cancelled: return Icons.cancel;
-      case BookingStatus.pending: return Icons.pending_actions;
+      case BookingStatus.confirmed:
+        return Icons.check_circle_outline;
+      case BookingStatus.inProgress:
+        return Icons.build_circle_outlined;
+      case BookingStatus.completed:
+        return Icons.verified;
+      case BookingStatus.cancelled:
+        return Icons.cancel;
+      case BookingStatus.pending:
+        return Icons.pending_actions;
+      case BookingStatus.paymentPending: // <-- ADDED
+        return Icons.payment; // Using Icons.payment for visual difference
     }
   }
 
   String _getStatusText(BookingStatus status) {
     switch (status) {
-      case BookingStatus.confirmed: return 'গ্রহণকৃত';
-      case BookingStatus.inProgress: return 'চলমান';
-      case BookingStatus.completed: return 'সম্পন্ন';
-      case BookingStatus.cancelled: return 'বাতিল';
-      case BookingStatus.pending: return 'অপেক্ষমাণ';
+      case BookingStatus.confirmed:
+        return 'গ্রহণকৃত';
+      case BookingStatus.inProgress:
+        return 'চলমান';
+      case BookingStatus.completed:
+        return 'সম্পন্ন';
+      case BookingStatus.cancelled:
+        return 'বাতিল';
+      case BookingStatus.pending:
+        return 'অপেক্ষমাণ';
+      case BookingStatus.paymentPending: // <-- ADDED
+        return 'পেমেন্ট অপেক্ষমাণ';
     }
   }
 

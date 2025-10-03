@@ -14,15 +14,26 @@ class MyBookingsPage extends StatefulWidget {
   State<MyBookingsPage> createState() => _MyBookingsPageState();
 }
 
-class _MyBookingsPageState extends State<MyBookingsPage> {
+class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProviderStateMixin {
   List<BookingEntity> _bookings = [];
   bool _isLoading = true;
   String _errorMessage = '';
+  late TabController _tabController;
+
+  // Track which bookings are being cancelled to show loading states
+  final Set<String> _cancellingBookings = {};
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     _loadBookings();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadBookings() async {
@@ -55,10 +66,20 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     }
   }
 
+  List<BookingEntity> get _activeBookings => _bookings
+      .where((b) => b.status.index <= BookingStatus.inProgress.index && b.status != BookingStatus.cancelled)
+      .toList();
+
+  List<BookingEntity> get _completedBookings => _bookings
+      .where((b) => b.status == BookingStatus.completed)
+      .toList();
+
+  List<BookingEntity> get _cancelledBookings => _bookings
+      .where((b) => b.status == BookingStatus.cancelled)
+      .toList();
+
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
@@ -75,153 +96,78 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
         title: const Text('আমার বুকিংস', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: _loadBookings,
             tooltip: 'রিফ্রেশ',
           ),
         ],
+        bottom: _isLoading || _errorMessage.isNotEmpty || _bookings.isEmpty
+            ? null
+            : TabBar(
+                controller: _tabController,
+                indicatorColor: Colors.white,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white70,
+                tabs: const [
+                  Tab(text: 'সক্রিয়'),
+                  Tab(text: 'সম্পন্ন'),
+                  Tab(text: 'বাতিল'),
+                ],
+              ),
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
+          ? _buildLoadingView()
           : _errorMessage.isNotEmpty
               ? _buildErrorView()
               : _bookings.isEmpty
                   ? _buildEmptyView()
-                  : RefreshIndicator(
-                      onRefresh: _loadBookings,
-                      child: ListView(
-                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                        physics: const BouncingScrollPhysics(),
-                        children: [
-                          _buildSection('চলমান বুকিংস', _bookings.where((b) => b.status.index <= BookingStatus.inProgress.index).toList()),
-                          const SizedBox(height: 16),
-                          _buildSection('ইতিহাস', _bookings.where((b) => b.status.index > BookingStatus.inProgress.index).toList()),
-                        ],
-                      ),
-                    ),
+                  : _buildTabView(),
     );
   }
 
-  Widget _buildErrorView() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.error_outline, color: AppColors.error, size: 70),
-          const SizedBox(height: 16),
-          Text(_errorMessage, textAlign: TextAlign.center, style: TextStyle(color: AppColors.error, fontSize: 16)),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: _loadBookings,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('আবার চেষ্টা করুন'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyView() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.calendar_today, size: 80, color: Colors.grey.shade400),
-          const SizedBox(height: 16),
-          const Text('আপনার কোনো বুকিং নেই', style: TextStyle(fontSize: 18, color: Colors.grey)),
-          const SizedBox(height: 12),
-          ElevatedButton(
-            onPressed: () => context.go('/services'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('সেবা খুঁজুন'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSection(String title, List<BookingEntity> bookings) {
-    if (bookings.isEmpty) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8.0),
-          child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        ),
-        ...bookings.map((b) => _buildBookingCard(b)),
-      ],
-    );
-  }
-
-  Widget _buildBookingCard(BookingEntity booking) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => context.go('/chat/${booking.id}/${booking.customerId}/${booking.providerId}'),
+  Widget _buildLoadingView() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 4,
+      itemBuilder: (context, index) => Card(
+        elevation: 2,
+        margin: const EdgeInsets.symmetric(vertical: 8),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
               Row(
                 children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: _getStatusColor(booking.status).withOpacity(0.1),
-                    child: Icon(_getStatusIcon(booking.status), color: _getStatusColor(booking.status)),
-                  ),
+                  CircleAvatar(radius: 20, backgroundColor: Colors.grey.shade300),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(booking.serviceCategory, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(booking.status).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      _getStatusText(booking.status),
-                      style: TextStyle(color: _getStatusColor(booking.status), fontWeight: FontWeight.bold, fontSize: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 120,
+                          height: 16,
+                          color: Colors.grey.shade300,
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          width: 80,
+                          height: 14,
+                          color: Colors.grey.shade300,
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-              const Divider(height: 20, thickness: 1),
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('তারিখ: ${_formatDate(booking.scheduledAt)}'),
-                  Text('সময়: ${_formatTime(booking.scheduledAt)}'),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('মূল্য: ৳${booking.price.toStringAsFixed(0)}'),
-                  if (booking.status == BookingStatus.pending)
-                    OutlinedButton.icon(
-                      onPressed: () => _updateBookingStatus(booking.id, BookingStatus.cancelled),
-                      icon: const Icon(Icons.cancel, size: 16),
-                      label: const Text('বাতিল করুন'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.error,
-                        side: BorderSide(color: AppColors.error),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
+                  Container(width: 80, height: 14, color: Colors.grey.shade300),
+                  Container(width: 60, height: 14, color: Colors.grey.shade300),
                 ],
               ),
             ],
@@ -231,18 +177,407 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     );
   }
 
-  String _formatDate(DateTime date) => '${date.day}-${date.month}-${date.year}';
-  String _formatTime(DateTime date) {
-    final t = TimeOfDay.fromDateTime(date);
-    return '${t.hour}:${t.minute.toString().padLeft(2, '0')}';
+  Widget _buildErrorView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, color: AppColors.error, size: 70),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.error, fontSize: 16),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _loadBookings,
+              icon: const Icon(Icons.refresh),
+              label: const Text('আবার চেষ্টা করুন'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.calendar_today, size: 80, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            const Text(
+              'আপনার কোনো বুকিং নেই',
+              style: TextStyle(fontSize: 18, color: Colors.grey, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'আপনার প্রথম সেবা বুক করুন',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => context.go('/services'),
+              icon: const Icon(Icons.search),
+              label: const Text('সেবা খুঁজুন'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabView() {
+    return Column(
+      children: [
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildBookingList(_activeBookings),
+              _buildBookingList(_completedBookings),
+              _buildBookingList(_cancelledBookings),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBookingList(List<BookingEntity> bookings) {
+    if (bookings.isEmpty) {
+      return _buildEmptyTabView(
+        icon: Icons.calendar_today,
+        message: 'কোনো বুকিং নেই',
+        subtitle: 'এখানে আপনার বুকিংগুলি দেখানো হবে',
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadBookings,
+      backgroundColor: Colors.white,
+      color: AppColors.primary,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        physics: const BouncingScrollPhysics(),
+        itemCount: bookings.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 12),
+        itemBuilder: (context, index) => _buildBookingCard(bookings[index]),
+      ),
+    );
+  }
+
+  Widget _buildEmptyTabView({required IconData icon, required String message, required String subtitle}) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 60, color: Colors.grey.shade400),
+          const SizedBox(height: 16),
+          Text(message, style: const TextStyle(fontSize: 16, color: Colors.grey)),
+          const SizedBox(height: 8),
+          Text(subtitle, style: TextStyle(fontSize: 14, color: Colors.grey.shade500)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBookingCard(BookingEntity booking) {
+    final isCancelling = _cancellingBookings.contains(booking.id);
+
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: isCancelling ? null : () => _handleCardTap(booking),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header Row
+              Row(
+                children: [
+                  // Status Icon
+                  Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor: _getStatusColor(booking.status).withOpacity(0.1),
+                        child: Icon(_getStatusIcon(booking.status), color: _getStatusColor(booking.status), size: 20),
+                      ),
+                      if (isCancelling)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(width: 12),
+                  
+                  // Service Info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          booking.serviceCategory,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _formatDateTime(booking.scheduledAt),
+                          style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Status Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(booking.status).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      _getStatusText(booking.status),
+                      style: TextStyle(
+                        color: _getStatusColor(booking.status),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              
+              const SizedBox(height: 12),
+              const Divider(height: 1, thickness: 1),
+              const SizedBox(height: 12),
+              
+              // Details Row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Price
+                  Text(
+                    '৳${booking.price.toStringAsFixed(0)}',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green),
+                  ),
+                  
+                  // Action Buttons
+                  _buildActionButtons(booking, isCancelling),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(BookingEntity booking, bool isCancelling) {
+    switch (booking.status) {
+      case BookingStatus.pending:
+        return Row(
+          children: [
+            // Prominent Chat Button
+            ElevatedButton.icon(
+              onPressed: isCancelling ? null : () => _openChat(booking),
+              icon: const Icon(Icons.chat, size: 16),
+              label: const Text('মেসেজ'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            ),
+            const SizedBox(width: 8),
+            
+            // Subtle Cancel Button
+            OutlinedButton.icon(
+              onPressed: isCancelling ? null : () => _showCancelConfirmation(booking),
+              icon: const Icon(Icons.cancel, size: 16),
+              label: const Text('বাতিল'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.error,
+                side: BorderSide(color: AppColors.error),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            ),
+          ],
+        );
+        
+      case BookingStatus.paymentPending:
+        return ElevatedButton.icon(
+          onPressed: isCancelling ? null : () => _initiatePayment(booking.id),
+          icon: const Icon(Icons.payment, size: 16),
+          label: const Text('পেমেন্ট'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.green,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          ),
+        );
+        
+      case BookingStatus.confirmed:
+        return Row(
+          children: [
+            IconButton(
+              onPressed: isCancelling ? null : () => _openChat(booking),
+              icon: const Icon(Icons.chat, size: 20),
+              tooltip: 'চ্যাট',
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.blue.shade50,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton.icon(
+              onPressed: isCancelling ? null : () => _initiatePayment(booking.id),
+              icon: const Icon(Icons.payment, size: 16),
+              label: const Text('পেমেন্ট'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            ),
+          ],
+        );
+        
+      case BookingStatus.inProgress:
+        return Row(
+          children: [
+            ElevatedButton.icon(
+              onPressed: isCancelling ? null : () => _openChat(booking),
+              icon: const Icon(Icons.chat, size: 16),
+              label: const Text('চ্যাট'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+            ),
+          ],
+        );
+        
+      case BookingStatus.completed:
+        return Row(
+          children: [
+            OutlinedButton.icon(
+              onPressed: isCancelling ? null : () => _openChat(booking),
+              icon: const Icon(Icons.chat, size: 16),
+              label: const Text('চ্যাট'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: BorderSide(color: AppColors.primary),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            ),
+          ],
+        );
+        
+      case BookingStatus.cancelled:
+        return Text(
+          'বাতিল হয়েছে',
+          style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w500),
+        );
+    }
+  }
+
+  void _handleCardTap(BookingEntity booking) {
+    // Prioritize chat for pending; fallback to payment if needed
+    if (booking.status == BookingStatus.pending) {
+      _openChat(booking);
+    } else if (booking.status == BookingStatus.paymentPending) {
+      context.go('/payment/${booking.id}');
+    } else {
+      _openChat(booking); // Enable for all active statuses
+    }
+  }
+
+  void _openChat(BookingEntity booking) {
+    context.go('/chat/${booking.id}/${booking.customerId}/${booking.providerId}');
+  }
+
+  void _initiatePayment(String bookingId) {
+    context.go('/payment/$bookingId');
+  }
+
+  void _showCancelConfirmation(BookingEntity booking) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('বুকিং বাতিল করুন'),
+        content: const Text('আপনি কি নিশ্চিত যে আপনি এই বুকিংটি বাতিল করতে চান?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('না'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _updateBookingStatus(booking.id, BookingStatus.cancelled);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('হ্যাঁ, বাতিল করুন'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDateTime(DateTime date) {
+    final dateStr = '${date.day}-${date.month}-${date.year}';
+    final timeStr = '${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    return '$dateStr, $timeStr';
   }
 
   Color _getStatusColor(BookingStatus status) {
     switch (status) {
       case BookingStatus.pending:
         return Colors.orange;
+      case BookingStatus.paymentPending:
+        return Colors.deepOrange;
       case BookingStatus.confirmed:
-        return Colors.blue;
+        return Colors.green;
       case BookingStatus.inProgress:
         return AppColors.primary;
       case BookingStatus.completed:
@@ -256,6 +591,8 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     switch (status) {
       case BookingStatus.pending:
         return Icons.pending_actions;
+      case BookingStatus.paymentPending:
+        return Icons.payment;
       case BookingStatus.confirmed:
         return Icons.check_circle_outline;
       case BookingStatus.inProgress:
@@ -271,8 +608,10 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
     switch (status) {
       case BookingStatus.pending:
         return 'অপেক্ষমাণ';
+      case BookingStatus.paymentPending:
+        return 'পেমেন্ট অপেক্ষমান';
       case BookingStatus.confirmed:
-        return 'নিশ্চিত';
+        return 'গ্রহণ করা হয়েছে';
       case BookingStatus.inProgress:
         return 'চলমান';
       case BookingStatus.completed:
@@ -287,13 +626,22 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
 
     if (state is Authenticated) {
       try {
-        final result = await ApiClient.updateBookingStatus(bookingId, newStatus, 'customer');
+        setState(() {
+          _cancellingBookings.add(bookingId);
+        });
+
+        final result = await ApiClient.updateBookingStatus(
+          bookingId,
+          newStatus,
+          'customer',
+        );
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(result['message']),
             backgroundColor: newStatus == BookingStatus.cancelled ? AppColors.error : AppColors.success,
             behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
         );
 
@@ -304,8 +652,13 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
             content: Text('স্ট্যাটাস আপডেট করতে সমস্যা: ${e.toString()}'),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
         );
+      } finally {
+        setState(() {
+          _cancellingBookings.remove(bookingId);
+        });
       }
     }
   }

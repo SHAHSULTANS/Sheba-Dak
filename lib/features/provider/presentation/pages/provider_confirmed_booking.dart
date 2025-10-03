@@ -1,3 +1,5 @@
+// lib/features/booking/presentation/pages/confirmed_bookings_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -38,7 +40,7 @@ class ConfirmedBookingsPage extends StatelessWidget {
       body: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
           if (state is Authenticated && state.user.role == Role.provider) {
-            // Get confirmed and in-progress bookings
+            // Filter only confirmed & in-progress bookings
             final confirmedBookings = DummyData.getBookingsByProvider(state.user.id)
                 .where((booking) =>
                     booking.status == BookingStatus.confirmed ||
@@ -66,7 +68,9 @@ class ConfirmedBookingsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildConfirmedBookingCard(BuildContext context, BookingEntity booking, ThemeData theme) {
+  /// Each booking card UI
+  Widget _buildConfirmedBookingCard(
+      BuildContext context, BookingEntity booking, ThemeData theme) {
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -76,7 +80,7 @@ class ConfirmedBookingsPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // Header with status
             Row(
               children: [
                 CircleAvatar(
@@ -117,16 +121,20 @@ class ConfirmedBookingsPage extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // Details
-            _buildInfoRow(Icons.calendar_today, 'তারিখ: ${_formatDate(booking.scheduledAt)}', theme),
-            _buildInfoRow(Icons.access_time, 'সময়: ${_formatTime(booking.scheduledAt)}', theme),
-            _buildInfoRow(Icons.attach_money, 'মূল্য: ৳${booking.price.toStringAsFixed(0)}', theme),
+            // Details section
+            _buildInfoRow(Icons.calendar_today,
+                'তারিখ: ${_formatDate(booking.scheduledAt)}', theme),
+            _buildInfoRow(Icons.access_time,
+                'সময়: ${_formatTime(booking.scheduledAt)}', theme),
+            _buildInfoRow(Icons.attach_money,
+                'মূল্য: ৳${booking.price.toStringAsFixed(0)}', theme),
             if (booking.description != null && booking.description!.isNotEmpty)
-              _buildInfoRow(Icons.description, 'বিবরণ: ${booking.description!}', theme),
+              _buildInfoRow(Icons.description,
+                  'বিবরণ: ${booking.description!}', theme),
 
             const SizedBox(height: 16),
 
-            // Action Buttons
+            // Actions
             _buildActionButtons(context, booking),
           ],
         ),
@@ -134,6 +142,7 @@ class ConfirmedBookingsPage extends StatelessWidget {
     );
   }
 
+  /// Action buttons (Chat + Status updates)
   Widget _buildActionButtons(BuildContext context, BookingEntity booking) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -142,13 +151,12 @@ class ConfirmedBookingsPage extends StatelessWidget {
         IconButton(
           icon: Icon(Icons.chat_bubble_outline, color: Theme.of(context).primaryColor),
           onPressed: () {
-            // Assuming chat route is implemented
             context.go('/chat/${booking.id}/${booking.customerId}/${booking.providerId}');
           },
           tooltip: 'গ্রাহকের সাথে চ্যাট করুন',
         ),
 
-        // Status Update Buttons
+        // Update booking status
         Row(
           children: [
             if (booking.status == BookingStatus.confirmed)
@@ -185,7 +193,7 @@ class ConfirmedBookingsPage extends StatelessWidget {
   }
 
   void _updateToInProgress(BuildContext context, BookingEntity booking) {
-    // TODO: Implement BLoC event to update booking status to inProgress
+    // TODO: Dispatch Bloc event for update
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('কাজ শুরু করা হয়েছে'),
@@ -195,7 +203,7 @@ class ConfirmedBookingsPage extends StatelessWidget {
   }
 
   void _updateToCompleted(BuildContext context, BookingEntity booking) {
-    // TODO: Implement BLoC event to update booking status to completed
+    // TODO: Dispatch Bloc event for update
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('কাজ সম্পন্ন করা হয়েছে'),
@@ -204,6 +212,7 @@ class ConfirmedBookingsPage extends StatelessWidget {
     );
   }
 
+  /// Info Row widget
   Widget _buildInfoRow(IconData icon, String text, ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -222,6 +231,7 @@ class ConfirmedBookingsPage extends StatelessWidget {
     );
   }
 
+  /// Empty State when no confirmed bookings
   Widget _buildEmptyState(BuildContext context, ThemeData theme) {
     return Center(
       child: Column(
@@ -253,6 +263,7 @@ class ConfirmedBookingsPage extends StatelessWidget {
     );
   }
 
+  /// Unauthorized UI
   Widget _buildUnauthorizedState(BuildContext context, ThemeData theme) {
     return Center(
       child: Column(
@@ -274,7 +285,7 @@ class ConfirmedBookingsPage extends StatelessWidget {
     );
   }
 
-  // Helper methods for status display
+  /// Status Helpers (added paymentPending)
   Color _getStatusColor(BookingStatus status) {
     switch (status) {
       case BookingStatus.confirmed:
@@ -286,6 +297,7 @@ class ConfirmedBookingsPage extends StatelessWidget {
       case BookingStatus.cancelled:
         return Colors.red;
       case BookingStatus.pending:
+      case BookingStatus.paymentPending:
         return Colors.orange;
     }
   }
@@ -302,6 +314,8 @@ class ConfirmedBookingsPage extends StatelessWidget {
         return Icons.cancel;
       case BookingStatus.pending:
         return Icons.pending_actions;
+      case BookingStatus.paymentPending:
+        return Icons.payment;
     }
   }
 
@@ -317,11 +331,15 @@ class ConfirmedBookingsPage extends StatelessWidget {
         return 'বাতিল';
       case BookingStatus.pending:
         return 'অপেক্ষমাণ';
+      case BookingStatus.paymentPending:
+        return 'পেমেন্ট অপেক্ষমাণ';
     }
   }
 
+  /// Date formatter
   String _formatDate(DateTime date) => '${date.day}-${date.month}-${date.year}';
 
+  /// Time formatter
   String _formatTime(DateTime date) {
     final time = TimeOfDay.fromDateTime(date);
     return '${time.hour}:${time.minute.toString().padLeft(2, '0')}';
