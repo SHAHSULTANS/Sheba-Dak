@@ -93,6 +93,10 @@ class _PaymentPageState extends State<PaymentPage> {
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
+                // Redirect to MyBookings after payment completion
+                if (bookingState.bookingId == widget.bookingId) {
+                  context.go('/my-bookings');
+                }
               } else if (bookingState is BookingFailure) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -162,7 +166,7 @@ class _PaymentPageState extends State<PaymentPage> {
                       title: const Text('ক্যাশ অন ডেলিভারি'),
                       value: 'cash_on_delivery',
                       groupValue: _selectedMethod,
-                      onChanged: currentStatus == BookingStatus.pending
+                      onChanged: currentStatus == BookingStatus.confirmed
                           ? (value) => setState(() => _selectedMethod = value!)
                           : null,
                       activeColor: Colors.blue,
@@ -181,13 +185,18 @@ class _PaymentPageState extends State<PaymentPage> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: isLoading || currentStatus != BookingStatus.pending
+                        onPressed: isLoading ||
+                                (currentStatus != BookingStatus.confirmed &&
+                                    currentStatus != BookingStatus.paymentPending)
                             ? null
                             : () {
+                                final newStatus = currentStatus == BookingStatus.confirmed
+                                    ? BookingStatus.paymentPending
+                                    : BookingStatus.paymentCompleted;
                                 context.read<BookingBloc>().add(
                                       UpdateBookingStatusEvent(
                                         id: widget.bookingId,
-                                        newStatus: BookingStatus.paymentPending,
+                                        newStatus: newStatus,
                                         authRole: 'customer',
                                       ),
                                     );
@@ -208,9 +217,11 @@ class _PaymentPageState extends State<PaymentPage> {
                                   color: Colors.white,
                                 ),
                               )
-                            : const Text(
-                                'পেমেন্ট কনফার্ম করুন',
-                                style: TextStyle(color: Colors.white, fontSize: 16),
+                            : Text(
+                                currentStatus == BookingStatus.confirmed
+                                    ? 'পেমেন্ট শুরু করুন'
+                                    : 'পেমেন্ট সম্পন্ন করুন',
+                                style: const TextStyle(color: Colors.white, fontSize: 16),
                               ),
                       ),
                     ),
@@ -224,25 +235,37 @@ class _PaymentPageState extends State<PaymentPage> {
                         Icon(
                           currentStatus == BookingStatus.paymentPending
                               ? Icons.hourglass_empty
-                              : currentStatus == BookingStatus.confirmed
+                              : currentStatus == BookingStatus.paymentCompleted
                                   ? Icons.check_circle
-                                  : Icons.pending,
+                                  : currentStatus == BookingStatus.confirmed
+                                      ? Icons.pending_actions
+                                      : Icons.pending,
                           color: currentStatus == BookingStatus.paymentPending
                               ? Colors.orange
-                              : currentStatus == BookingStatus.confirmed
+                              : currentStatus == BookingStatus.paymentCompleted
                                   ? Colors.green
-                                  : Colors.grey,
+                                  : currentStatus == BookingStatus.confirmed
+                                      ? Colors.blue
+                                      : Colors.grey,
                           size: 24,
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          currentStatus.toString().split('.').last.toUpperCase(),
+                          currentStatus == BookingStatus.paymentPending
+                              ? 'পেমেন্ট অপেক্ষমাণ'
+                              : currentStatus == BookingStatus.paymentCompleted
+                                  ? 'পেমেন্ট সম্পন্ন'
+                                  : currentStatus == BookingStatus.confirmed
+                                      ? 'প্রোভাইডার গ্রহণ করেছে'
+                                      : currentStatus.toString().split('.').last.toUpperCase(),
                           style: TextStyle(
                             color: currentStatus == BookingStatus.paymentPending
                                 ? Colors.orange
-                                : currentStatus == BookingStatus.confirmed
+                                : currentStatus == BookingStatus.paymentCompleted
                                     ? Colors.green
-                                    : Colors.grey,
+                                    : currentStatus == BookingStatus.confirmed
+                                        ? Colors.blue
+                                        : Colors.grey,
                             fontSize: 16,
                           ),
                         ),

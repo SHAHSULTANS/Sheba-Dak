@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:smartsheba/core/theme/app_theme.dart';
 import 'package:smartsheba/core/utils/dummy_data.dart';
 import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
 import 'package:smartsheba/features/auth/presentation/bloc/auth_bloc.dart';
@@ -285,57 +286,62 @@ class ConfirmedBookingsPage extends StatelessWidget {
     );
   }
 
-  /// Status Helpers (added paymentPending)
   Color _getStatusColor(BookingStatus status) {
     switch (status) {
+      case BookingStatus.pending:
+        return Colors.orange;
+      case BookingStatus.paymentPending:
+        return Colors.deepOrange;
       case BookingStatus.confirmed:
         return Colors.green;
-      case BookingStatus.inProgress:
-        return Colors.blue;
-      case BookingStatus.completed:
+      case BookingStatus.paymentCompleted: // <-- ADDED
         return Colors.green.shade700;
+      case BookingStatus.inProgress:
+        return AppColors.primary;
+      case BookingStatus.completed:
+        return AppColors.success;
       case BookingStatus.cancelled:
-        return Colors.red;
-      case BookingStatus.pending:
-      case BookingStatus.paymentPending:
-        return Colors.orange;
+        return AppColors.error;
     }
   }
 
   IconData _getStatusIcon(BookingStatus status) {
     switch (status) {
-      case BookingStatus.confirmed:
-        return Icons.check_circle_outline;
-      case BookingStatus.inProgress:
-        return Icons.build_circle_outlined;
-      case BookingStatus.completed:
-        return Icons.verified;
-      case BookingStatus.cancelled:
-        return Icons.cancel;
       case BookingStatus.pending:
         return Icons.pending_actions;
       case BookingStatus.paymentPending:
         return Icons.payment;
+      case BookingStatus.confirmed:
+        return Icons.check_circle_outline;
+      case BookingStatus.paymentCompleted: // <-- ADDED
+        return Icons.verified;
+      case BookingStatus.inProgress:
+        return Icons.build_circle_outlined;
+      case BookingStatus.completed:
+        return Icons.assignment_turned_in;
+      case BookingStatus.cancelled:
+        return Icons.cancel;
     }
   }
 
   String _getStatusText(BookingStatus status) {
     switch (status) {
+      case BookingStatus.pending:
+        return 'অপেক্ষমাণ';
+      case BookingStatus.paymentPending:
+        return 'পেমেন্ট অপেক্ষমান';
       case BookingStatus.confirmed:
         return 'গ্রহণ করা হয়েছে';
+      case BookingStatus.paymentCompleted: // <-- ADDED
+        return 'পেমেন্ট সম্পন্ন';
       case BookingStatus.inProgress:
         return 'চলমান';
       case BookingStatus.completed:
         return 'সম্পন্ন';
       case BookingStatus.cancelled:
         return 'বাতিল';
-      case BookingStatus.pending:
-        return 'অপেক্ষমাণ';
-      case BookingStatus.paymentPending:
-        return 'পেমেন্ট অপেক্ষমাণ';
     }
   }
-
   /// Date formatter
   String _formatDate(DateTime date) => '${date.day}-${date.month}-${date.year}';
 

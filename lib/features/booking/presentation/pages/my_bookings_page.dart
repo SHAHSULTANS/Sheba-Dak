@@ -6,6 +6,7 @@ import 'package:smartsheba/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:smartsheba/core/network/api_client.dart';
 import 'package:smartsheba/core/theme/app_theme.dart';
 import '../../domain/entities/booking_entity.dart';
+import '../../../../core/utils/dummy_data.dart';
 
 class MyBookingsPage extends StatefulWidget {
   const MyBookingsPage({super.key});
@@ -19,8 +20,6 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
   bool _isLoading = true;
   String _errorMessage = '';
   late TabController _tabController;
-
-  // Track which bookings are being cancelled to show loading states
   final Set<String> _cancellingBookings = {};
 
   @override
@@ -67,7 +66,9 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
   }
 
   List<BookingEntity> get _activeBookings => _bookings
-      .where((b) => b.status.index <= BookingStatus.inProgress.index && b.status != BookingStatus.cancelled)
+      .where((b) =>
+          b.status.index <= BookingStatus.paymentCompleted.index &&
+          b.status != BookingStatus.cancelled)
       .toList();
 
   List<BookingEntity> get _completedBookings => _bookings
@@ -93,7 +94,10 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
             ),
           ),
         ),
-        title: const Text('আমার বুকিংস', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'আমার বুকিংস',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
@@ -135,10 +139,15 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  CircleAvatar(radius: 20, backgroundColor: Colors.grey.shade300),
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Colors.grey.shade300,
+                    child: const SizedBox(),
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -147,13 +156,28 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
                         Container(
                           width: 120,
                           height: 16,
-                          color: Colors.grey.shade300,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                         ),
                         const SizedBox(height: 4),
                         Container(
                           width: 80,
                           height: 14,
-                          color: Colors.grey.shade300,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          width: 100,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                         ),
                       ],
                     ),
@@ -166,8 +190,22 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(width: 80, height: 14, color: Colors.grey.shade300),
-                  Container(width: 60, height: 14, color: Colors.grey.shade300),
+                  Container(
+                    width: 80,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  Container(
+                    width: 60,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -184,17 +222,25 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, color: AppColors.error, size: 70),
+            Icon(
+              Icons.error_outline,
+              color: AppColors.error,
+              size: 80,
+            ),
             const SizedBox(height: 16),
             Text(
               _errorMessage,
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.error, fontSize: 16),
+              style: TextStyle(
+                color: AppColors.error,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: _loadBookings,
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(Icons.refresh, size: 20),
               label: const Text('আবার চেষ্টা করুন'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
@@ -216,22 +262,33 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.calendar_today, size: 80, color: Colors.grey.shade400),
+            Icon(
+              Icons.calendar_today,
+              size: 80,
+              color: Colors.grey.shade400,
+            ),
             const SizedBox(height: 16),
             const Text(
               'আপনার কোনো বুকিং নেই',
-              style: TextStyle(fontSize: 18, color: Colors.grey, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey,
+                fontWeight: FontWeight.w500,
+              ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'আপনার প্রথম সেবা বুক করুন',
+            Text(
+              'আপনার প্রথম সেবা বুক করুন এবং এখানে ট্র্যাক করুন',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 14,
+              ),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () => context.go('/services'),
-              icon: const Icon(Icons.search),
+              icon: const Icon(Icons.search, size: 20),
               label: const Text('সেবা খুঁজুন'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
@@ -253,9 +310,9 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
           child: TabBarView(
             controller: _tabController,
             children: [
-              _buildBookingList(_activeBookings),
-              _buildBookingList(_completedBookings),
-              _buildBookingList(_cancelledBookings),
+              _buildBookingList(_activeBookings, 'সক্রিয় বুকিং নেই'),
+              _buildBookingList(_completedBookings, 'কোনো সম্পন্ন বুকিং নেই'),
+              _buildBookingList(_cancelledBookings, 'কোনো বাতিল বুকিং নেই'),
             ],
           ),
         ),
@@ -263,11 +320,11 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
     );
   }
 
-  Widget _buildBookingList(List<BookingEntity> bookings) {
+  Widget _buildBookingList(List<BookingEntity> bookings, String emptyMessage) {
     if (bookings.isEmpty) {
       return _buildEmptyTabView(
         icon: Icons.calendar_today,
-        message: 'কোনো বুকিং নেই',
+        message: emptyMessage,
         subtitle: 'এখানে আপনার বুকিংগুলি দেখানো হবে',
       );
     }
@@ -286,16 +343,23 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
     );
   }
 
-  Widget _buildEmptyTabView({required IconData icon, required String message, required String subtitle}) {
+  Widget _buildEmptyTabView(
+      {required IconData icon, required String message, required String subtitle}) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(icon, size: 60, color: Colors.grey.shade400),
           const SizedBox(height: 16),
-          Text(message, style: const TextStyle(fontSize: 16, color: Colors.grey)),
+          Text(
+            message,
+            style: const TextStyle(fontSize: 16, color: Colors.grey),
+          ),
           const SizedBox(height: 8),
-          Text(subtitle, style: TextStyle(fontSize: 14, color: Colors.grey.shade500)),
+          Text(
+            subtitle,
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
+          ),
         ],
       ),
     );
@@ -303,6 +367,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
 
   Widget _buildBookingCard(BookingEntity booking) {
     final isCancelling = _cancellingBookings.contains(booking.id);
+    final provider = DummyData.getProviderById(booking.providerId);
 
     return Card(
       elevation: 3,
@@ -316,16 +381,18 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Row
               Row(
                 children: [
-                  // Status Icon
                   Stack(
                     children: [
                       CircleAvatar(
                         radius: 20,
                         backgroundColor: _getStatusColor(booking.status).withOpacity(0.1),
-                        child: Icon(_getStatusIcon(booking.status), color: _getStatusColor(booking.status), size: 20),
+                        child: Icon(
+                          _getStatusIcon(booking.status),
+                          color: _getStatusColor(booking.status),
+                          size: 20,
+                        ),
                       ),
                       if (isCancelling)
                         Positioned.fill(
@@ -334,34 +401,47 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
                               color: Colors.black54,
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: const CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
                           ),
                         ),
                     ],
                   ),
                   const SizedBox(width: 12),
-                  
-                  // Service Info
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           booking.serviceCategory,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 4),
+                        Text(
+                          'প্রোভাইডার: ${provider.name}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
                         Text(
                           _formatDateTime(booking.scheduledAt),
-                          style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  
-                  // Status Badge
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
@@ -379,22 +459,20 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
                   ),
                 ],
               ),
-              
               const SizedBox(height: 12),
               const Divider(height: 1, thickness: 1),
               const SizedBox(height: 12),
-              
-              // Details Row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Price
                   Text(
                     '৳${booking.price.toStringAsFixed(0)}',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
                   ),
-                  
-                  // Action Buttons
                   _buildActionButtons(booking, isCancelling),
                 ],
               ),
@@ -410,7 +488,6 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
       case BookingStatus.pending:
         return Row(
           children: [
-            // Prominent Chat Button
             ElevatedButton.icon(
               onPressed: isCancelling ? null : () => _openChat(booking),
               icon: const Icon(Icons.chat, size: 16),
@@ -423,8 +500,6 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
               ),
             ),
             const SizedBox(width: 8),
-            
-            // Subtle Cancel Button
             OutlinedButton.icon(
               onPressed: isCancelling ? null : () => _showCancelConfirmation(booking),
               icon: const Icon(Icons.cancel, size: 16),
@@ -438,12 +513,11 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
             ),
           ],
         );
-        
       case BookingStatus.paymentPending:
         return ElevatedButton.icon(
           onPressed: isCancelling ? null : () => _initiatePayment(booking.id),
           icon: const Icon(Icons.payment, size: 16),
-          label: const Text('পেমেন্ট'),
+          label: const Text('পেমেন্ট সম্পন্ন করুন'),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.green,
             foregroundColor: Colors.white,
@@ -451,7 +525,6 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           ),
         );
-        
       case BookingStatus.confirmed:
         return Row(
           children: [
@@ -468,7 +541,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
             ElevatedButton.icon(
               onPressed: isCancelling ? null : () => _initiatePayment(booking.id),
               icon: const Icon(Icons.payment, size: 16),
-              label: const Text('পেমেন্ট'),
+              label: const Text('পেমেন্ট শুরু'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green,
                 foregroundColor: Colors.white,
@@ -478,7 +551,45 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
             ),
           ],
         );
-        
+      case BookingStatus.paymentCompleted:
+        return Row(
+          children: [
+            ElevatedButton.icon(
+              onPressed: isCancelling ? null : () => _openChat(booking),
+              icon: const Icon(Icons.chat, size: 16),
+              label: const Text('চ্যাট'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.verified, size: 16, color: Colors.green.shade700),
+                  const SizedBox(width: 4),
+                  Text(
+                    'পেমেন্ট সম্পন্ন',
+                    style: TextStyle(
+                      color: Colors.green.shade700,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
       case BookingStatus.inProgress:
         return Row(
           children: [
@@ -495,7 +606,6 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
             ),
           ],
         );
-        
       case BookingStatus.completed:
         return Row(
           children: [
@@ -510,9 +620,20 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
             ),
+            const SizedBox(width: 8),
+            OutlinedButton.icon(
+              onPressed: isCancelling ? null : () => _submitFeedback(booking),
+              icon: const Icon(Icons.star_border, size: 16),
+              label: const Text('ফিডব্যাক'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.orange,
+                side: const BorderSide(color: Colors.orange),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+            ),
           ],
         );
-        
       case BookingStatus.cancelled:
         return Text(
           'বাতিল হয়েছে',
@@ -522,13 +643,13 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
   }
 
   void _handleCardTap(BookingEntity booking) {
-    // Prioritize chat for pending; fallback to payment if needed
-    if (booking.status == BookingStatus.pending) {
-      _openChat(booking);
-    } else if (booking.status == BookingStatus.paymentPending) {
-      context.go('/payment/${booking.id}');
+    if (booking.status == BookingStatus.confirmed ||
+        booking.status == BookingStatus.paymentPending) {
+      _initiatePayment(booking.id);
+    } else if (booking.status == BookingStatus.completed) {
+      _submitFeedback(booking);
     } else {
-      _openChat(booking); // Enable for all active statuses
+      _openChat(booking);
     }
   }
 
@@ -538,6 +659,38 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
 
   void _initiatePayment(String bookingId) {
     context.go('/payment/$bookingId');
+  }
+
+  void _submitFeedback(BookingEntity booking) {
+    // Placeholder: Navigate to a feedback page or show a dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('ফিডব্যাক দিন'),
+        content: const Text('এই সেবার জন্য আপনার রেটিং এবং মন্তব্য দিন। (ভবিষ্যতে ফিডব্যাক ফর্ম যুক্ত হবে)'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('বন্ধ করুন'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('ফিডব্যাক জমা দেওয়া হয়েছে!'),
+                  backgroundColor: Colors.green,
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text('জমা দিন'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showCancelConfirmation(BookingEntity booking) {
@@ -577,7 +730,9 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
       case BookingStatus.paymentPending:
         return Colors.deepOrange;
       case BookingStatus.confirmed:
-        return Colors.green;
+        return Colors.blue; // Changed to blue to avoid implying payment completion
+      case BookingStatus.paymentCompleted:
+        return Colors.green.shade700;
       case BookingStatus.inProgress:
         return AppColors.primary;
       case BookingStatus.completed:
@@ -595,10 +750,12 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
         return Icons.payment;
       case BookingStatus.confirmed:
         return Icons.check_circle_outline;
+      case BookingStatus.paymentCompleted:
+        return Icons.verified;
       case BookingStatus.inProgress:
         return Icons.build_circle_outlined;
       case BookingStatus.completed:
-        return Icons.verified;
+        return Icons.assignment_turned_in;
       case BookingStatus.cancelled:
         return Icons.cancel;
     }
@@ -609,9 +766,11 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
       case BookingStatus.pending:
         return 'অপেক্ষমাণ';
       case BookingStatus.paymentPending:
-        return 'পেমেন্ট অপেক্ষমান';
+        return 'পেমেন্ট অপেক্ষমাণ';
       case BookingStatus.confirmed:
         return 'গ্রহণ করা হয়েছে';
+      case BookingStatus.paymentCompleted:
+        return 'পেমেন্ট সম্পন্ন';
       case BookingStatus.inProgress:
         return 'চলমান';
       case BookingStatus.completed:
