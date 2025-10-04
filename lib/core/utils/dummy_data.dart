@@ -1,17 +1,17 @@
 import 'package:uuid/uuid.dart'; // Uuid import
 import '../../features/booking/domain/entities/booking_entity.dart';
-import '../../features/auth/domain/entities/user_entity.dart'; // imported
+import '../../features/auth/domain/entities/user_entity.dart';
 import '../../features/home/domain/entities/service_category.dart';
 import '../../features/home/domain/entities/service.dart';
-// Import the new provider entity
 import '../../features/provider/domain/entities/service_provider.dart';
-// Import the provider application entity
 import '../../../features/provider/domain/entities/provider_application.dart';
 import '../../features/chat/domain/entities/chat_message.dart';
 
 class DummyData {
 
-  //chat message week 6.
+  // ==============================
+  // Chat Messages (Week 6)
+  // ==============================
   static List<ChatMessage> _messages = [];
 
   static void addMessage(ChatMessage message) {
@@ -22,37 +22,32 @@ class DummyData {
     return _messages
         .where((m) => m.bookingId == bookingId)
         .toList()
-      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));  // Sort by time.
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
   }
 
-
   // ==============================
-  // Store for pending provider applications (Week 16)
+  // Provider Applications (Week 16)
   // ==============================
   static final List<ProviderApplication> _applications = [];
 
-  /// Add new application for admin review
   static void addProviderApplication(ProviderApplication application) {
     _applications.add(application);
-    print(
-        'DEBUG: New Provider Application Added: ${application.name} (Total: ${_applications.length})');
+    print('DEBUG: New Provider Application Added: ${application.name} (Total: ${_applications.length})');
   }
 
-  /// Pending applications list for admin panel
   static List<ProviderApplication> getPendingApplications() {
     return List.unmodifiable(_applications);
   }
 
   // ==============================
-  // Store for Bookings (Week 6 Foundation)
+  // Bookings - Enhanced for Customer Dummy Data
   // ==============================
   static final List<BookingEntity> _bookings = [];
 
   /// Add new booking
   static void addBooking(BookingEntity booking) {
     _bookings.add(booking);
-    print(
-        'DEBUG: New Booking Added: ${booking.id} for Customer ${booking.customerId}');
+    print('DEBUG: New Booking Added: ${booking.id} (${booking.status}) for Customer ${booking.customerId}');
   }
 
   /// Get bookings by provider
@@ -60,71 +55,111 @@ class DummyData {
     return _bookings.where((b) => b.providerId == providerId).toList();
   }
 
+  /// Get bookings by customer (Upcoming first)
+  static List<BookingEntity> getBookingsByCustomer(String customerId) {
+    return _bookings
+        .where((b) => b.customerId == customerId)
+        .toList()
+      ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+  }
 
-      /// Get bookings by customer (Upcoming first)
-    static List<BookingEntity> getBookingsByCustomer(String customerId) {
-      return _bookings
-          .where((b) => b.customerId == customerId)
-          .toList()
-        ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+  /// NEW: Get all bookings for a specific customer (with status filtering option)
+  static List<BookingEntity> getCustomerBookings(String customerId, {BookingStatus? status}) {
+    var customerBookings = _bookings.where((b) => b.customerId == customerId).toList()
+      ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+
+    if (status != null) {
+      customerBookings = customerBookings.where((b) => b.status == status).toList();
     }
 
-    // UPDATED: Both 'pending' and 'paymentPending' bookings are now considered as incoming requests
-    static List<BookingEntity> getPendingBookingsByProvider(String providerId) {
-      return _bookings
-          .where((b) =>
-              b.providerId == providerId &&
-              (b.status == BookingStatus.pending ||
-                b.status == BookingStatus.paymentPending)) // <-- UPDATED
-          .toList()
-        ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));  // Sort by date.
-    }
+    return customerBookings;
+  }
+
+  /// Get pending bookings by provider (includes paymentPending)
+  static List<BookingEntity> getPendingBookingsByProvider(String providerId) {
+    return _bookings
+        .where((b) =>
+            b.providerId == providerId &&
+            (b.status == BookingStatus.pending || b.status == BookingStatus.paymentPending))
+        .toList()
+      ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+  }
+
   // Internal access for ApiClient (mutable list)
   static List<BookingEntity> getInternalBookingsList() => _bookings;
 
+  /// NEW: Initialize dummy customer bookings (4 bookings for customer1)
+ // ... (rest of dummy_data.dart remains the same)
+static void initDummyBookings() {
+  // Booking 1: Pending (Default for testing)
+  addBooking(BookingEntity(
+    id: 'booking1',
+    customerId: 'customer1',
+    providerId: 'provider1',
+    serviceCategory: 'plumbing',
+    scheduledAt: DateTime.now().add(Duration(days: 1, hours: 10)),
+    status: BookingStatus.pending,
+    price: 500.0,
+    description: 'Dummy Plumbing Booking (Pending)',
+  ));
+  // Booking 2: Payment Pending (Awaiting payment)
+  addBooking(BookingEntity(
+    id: 'booking2',
+    customerId: 'customer1',
+    providerId: 'provider1',
+    serviceCategory: 'electrical',
+    scheduledAt: DateTime.now().add(Duration(days: 2, hours: 12)),
+    status: BookingStatus.paymentPending,
+    price: 800.0,
+    description: 'Dummy Electrical Booking (Payment Pending)',
+  ));
+  // Booking 3: Confirmed (Provider accepted, awaiting payment)
+  addBooking(BookingEntity(
+    id: 'booking3',
+    customerId: 'customer1',
+    providerId: 'provider1',
+    serviceCategory: 'cleaning',
+    scheduledAt: DateTime.now().add(Duration(hours: 5)),
+    status: BookingStatus.confirmed,
+    price: 1500.0,
+    description: 'Dummy Confirmed Cleaning Booking (Awaiting Payment)',
+  ));
+  // Booking 4: Payment Completed (Payment done)
+  addBooking(BookingEntity(
+    id: 'booking4',
+    customerId: 'customer1',
+    providerId: 'provider1',
+    serviceCategory: 'painting',
+    scheduledAt: DateTime.now().subtract(Duration(days: 1)),
+    status: BookingStatus.paymentCompleted,
+    price: 1000.0,
+    description: 'Dummy Painting Booking (Payment Completed)',
+  ));
+  addBooking(BookingEntity(
+    id: 'booking4',
+    customerId: 'customer1',
+    providerId: 'provider1',
+    serviceCategory: 'painting',
+    scheduledAt: DateTime.now().subtract(Duration(days: 1)),
+    status: BookingStatus.completed,
+    price: 1000.0,
+    description: 'Dummy Painting Booking (Payment Completed)',
+  ));
 
-  // UPDATED: Dummy data includes new status
-  static void initDummyBookings() {
-        // Booking 1: Pending (Default for testing)
-        addBooking(BookingEntity(
-          id: 'booking1',
-          customerId: 'customer1',
-          providerId: 'provider1', // Match with ApiClient user.id
-          serviceCategory: 'plumbing',
-          scheduledAt: DateTime.now().add(Duration(days: 1, hours: 10)),
-          status: BookingStatus.pending,
-          price: 500.0,
-          description: 'Dummy Plumbing Booking (Pending)',
-        ));
-        // Booking 2: Payment Pending (New status for testing)
-        addBooking(BookingEntity(
-          id: 'booking2',
-          customerId: 'customer2',
-          providerId: 'provider1',
-          serviceCategory: 'electrical',
-          scheduledAt: DateTime.now().add(Duration(days: 2, hours: 12)),
-          status: BookingStatus.paymentPending, // <-- UPDATED
-          price: 800.0,
-          description: 'Dummy Electrical Booking (Payment Pending)',
-        ));
-        // Booking 3: Confirmed (For Confirmed Bookings Page)
-        addBooking(BookingEntity(
-          id: 'booking3',
-          customerId: 'customer3',
-          providerId: 'provider1',
-          serviceCategory: 'cleaning',
-          scheduledAt: DateTime.now().add(Duration(hours: 5)),
-          status: BookingStatus.confirmed, // <-- Added confirmed booking
-          price: 1500.0,
-          description: 'Dummy Confirmed Cleaning Booking (Today)',
-        ));
-      }
-
+  addBooking(BookingEntity(
+    id: 'booking4',
+    customerId: 'customer1',
+    providerId: 'provider1',
+    serviceCategory: 'painting',
+    scheduledAt: DateTime.now().subtract(Duration(days: 1)),
+    status: BookingStatus.cancelled,
+    price: 1000.0,
+    description: 'Dummy Painting Booking (Payment Completed)',
+  ));
+}
   // ==============================
   // Existing Service & Provider Data
   // ==============================
-
-  // --- PRIVATE LIST: Single source of truth for all services ---
   static const List<Service> _allServices = [
     // Plumbing Services (3)
     Service(
@@ -231,7 +266,7 @@ class DummyData {
         providerName: 'Emergency Response'),
   ];
 
-  // --- Existing getServiceCategories (No change needed) ---
+  // Get service categories
   static List<ServiceCategory> getServiceCategories() {
     return const [
       ServiceCategory(
@@ -312,7 +347,7 @@ class DummyData {
     ];
   }
 
-  // --- Existing getServices ---
+  // Get services by category
   static List<Service> getServices(String categoryId) {
     if (categoryId.isEmpty) {
       return _allServices;
@@ -322,7 +357,7 @@ class DummyData {
         .toList();
   }
 
-  // --- Existing getServiceById ---
+  // Get service by ID
   static Service getServiceById(String serviceId) {
     return _allServices.firstWhere(
       (s) => s.id == serviceId,
@@ -337,7 +372,7 @@ class DummyData {
     );
   }
 
-  // --- NEW FIX: Dedicated method to find a single provider by ID ---
+  // Get provider by ID
   static ServiceProvider getProviderById(String providerId) {
     return getProviders().firstWhere(
       (p) => p.id == providerId,
@@ -352,7 +387,7 @@ class DummyData {
     );
   }
 
-  // --- NEW METHOD: List of Service Providers ---
+  // Get all providers
   static List<ServiceProvider> getProviders() {
     return const [
       ServiceProvider(
@@ -360,7 +395,7 @@ class DummyData {
         name: 'Rahim Technician',
         rating: 4.5,
         isVerified: true,
-        services: ['pipe-repair', 'drain-clean', 'toilet-fix'], // Plumbing
+        services: ['pipe-repair', 'drain-clean', 'toilet-fix'],
         description: 'Five years experienced skilled plumber. Ensure fast and reliable service.',
       ),
       ServiceProvider(
@@ -368,7 +403,7 @@ class DummyData {
         name: 'Aman Electric',
         rating: 4.0,
         isVerified: false,
-        services: ['wiring-fix', 'light-fix', 'circuit-break'], // Electrical
+        services: ['wiring-fix', 'light-fix', 'circuit-break'],
         description: 'Electrical specialist. Capable of solving any complex wiring problems in home or office.',
       ),
       ServiceProvider(
@@ -376,7 +411,7 @@ class DummyData {
         name: 'Shine Cleaners',
         rating: 4.8,
         isVerified: true,
-        services: ['deep-clean', 'carpet-clean'], // Cleaning
+        services: ['deep-clean', 'carpet-clean'],
         description: 'We deeply clean your home or office by making it germ-free.',
       ),
       ServiceProvider(
@@ -384,7 +419,7 @@ class DummyData {
         name: 'Paint Master',
         rating: 3.9,
         isVerified: true,
-        services: ['wall-paint', 'texture-paint'], // Painting
+        services: ['wall-paint', 'texture-paint'],
         description: 'Professional painting service. Give new life to your walls.',
       ),
       ServiceProvider(
@@ -392,7 +427,7 @@ class DummyData {
         name: 'Cool Tech',
         rating: 4.2,
         isVerified: false,
-        services: ['ac-install', 'ac-service', 'gas-refill'], // AC Repair
+        services: ['ac-install', 'ac-service', 'gas-refill'],
         description: 'Contact for all types of AC installation, servicing and quick repairs.',
       ),
     ];

@@ -69,7 +69,7 @@ class ApiClient {
         'success': true,
         'token': 'dummy_jwt_token',
         'user': {
-          'id': 'provider1',
+          'id': 'customer1',
           'name': 'Test User',
           'phone_number': phoneNumber,
           'role': 'customer'

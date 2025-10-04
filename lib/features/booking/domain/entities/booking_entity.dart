@@ -1,6 +1,7 @@
 enum BookingStatus {
   pending,
   paymentPending, // Added for payment initiation
+  paymentCompleted, // New status for payment completion
   confirmed,
   inProgress,
   completed,
