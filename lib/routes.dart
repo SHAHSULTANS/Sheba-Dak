@@ -1,42 +1,31 @@
+// lib/routes.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-
-// --- AUTH IMPORTS ---
 import 'package:smartsheba/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
 import 'package:smartsheba/features/auth/presentation/pages/profile_veiw.dart';
 import 'package:smartsheba/features/booking/presentation/pages/incoming_requests_page.dart';
+import 'package:smartsheba/features/booking/presentation/pages/incoming_request_details_page.dart'; // New import
 import 'package:smartsheba/features/provider/presentation/pages/provider_confirmed_booking.dart';
-
-// --- Auth Page Imports ---
-import 'features/auth/presentation/pages/login_page.dart';
-import 'features/auth/presentation/pages/register_page.dart';
-import 'features/auth/presentation/pages/otp_verification_page.dart';
-import 'features/auth/presentation/pages/profile_creation_page.dart';
-import 'features/auth/presentation/pages/profile_edit_page.dart';
-
-// --- Home/Service Imports ---
-import 'features/home/presentation/pages/home_page.dart';
-import 'features/home/presentation/pages/service_list_page.dart';
-import 'features/home/presentation/pages/service_detail_page.dart';
-
-// --- PROVIDER IMPORTS ---
-import 'features/provider/presentation/pages/provider_list_page.dart';
-import 'features/provider/presentation/pages/provider_detail_page.dart';
-import 'features/provider/presentation/pages/provider_dashboard_page.dart';
-import 'features/provider/presentation/pages/contact_provider_page.dart';
-import 'features/provider/presentation/pages/provider_registration_page.dart';
-
-// --- Booking Page Imports ---
-import 'features/booking/presentation/pages/book_service_page.dart';
-import 'features/booking/presentation/pages/my_bookings_page.dart';
-
-// --- Payment Page Imports ---
-import 'features/payment/presentation/pages/payment_page.dart';
-
-// --- Chat Page Imports ---
-import 'features/chat/presentation/pages/chat_page.dart';
+import 'package:smartsheba/features/auth/presentation/pages/login_page.dart';
+import 'package:smartsheba/features/auth/presentation/pages/register_page.dart';
+import 'package:smartsheba/features/auth/presentation/pages/otp_verification_page.dart';
+import 'package:smartsheba/features/auth/presentation/pages/profile_creation_page.dart';
+import 'package:smartsheba/features/auth/presentation/pages/profile_edit_page.dart';
+import 'package:smartsheba/features/home/presentation/pages/home_page.dart';
+import 'package:smartsheba/features/home/presentation/pages/service_list_page.dart';
+import 'package:smartsheba/features/home/presentation/pages/service_detail_page.dart';
+import 'package:smartsheba/features/provider/presentation/pages/provider_list_page.dart';
+import 'package:smartsheba/features/provider/presentation/pages/provider_detail_page.dart';
+import 'package:smartsheba/features/provider/presentation/pages/provider_dashboard_page.dart';
+import 'package:smartsheba/features/provider/presentation/pages/contact_provider_page.dart';
+import 'package:smartsheba/features/provider/presentation/pages/provider_registration_page.dart';
+import 'package:smartsheba/features/booking/presentation/pages/book_service_page.dart';
+import 'package:smartsheba/features/booking/presentation/pages/my_bookings_page.dart';
+import 'package:smartsheba/features/payment/presentation/pages/payment_page.dart';
+import 'package:smartsheba/features/chat/presentation/pages/chat_page.dart';
+import 'package:smartsheba/features/booking/presentation/pages/payment_status_page.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -100,7 +89,6 @@ final GoRouter appRouter = GoRouter(
         final serviceCategory = state.pathParameters['serviceCategory']!;
         final priceString = state.pathParameters['price']!;
         final price = double.tryParse(priceString) ?? 0.0;
-
         return BookServicePage(
           providerId: providerId,
           serviceCategory: serviceCategory,
@@ -113,11 +101,17 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const MyBookingsPage(),
     ),
 
-    // --- PAYMENT ROUTE ---
+    // --- PAYMENT ROUTES ---
     GoRoute(
       path: '/payment/:bookingId',
       builder: (context, state) => PaymentPage(
         bookingId: state.pathParameters['bookingId']!,
+      ),
+    ),
+    GoRoute(
+      path: '/payment-status/:id',
+      builder: (context, state) => PaymentStatusPage(
+        id: state.pathParameters['id']!,
       ),
     ),
 
@@ -128,8 +122,7 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/provider-detail/:id',
-      builder: (context, state) =>
-          ProviderDetailPage(id: state.pathParameters['id']!),
+      builder: (context, state) => ProviderDetailPage(id: state.pathParameters['id']!),
     ),
     GoRoute(
       path: '/provider-dashboard',
@@ -144,10 +137,16 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const ProviderRegistrationPage(),
     ),
 
-    // --- INCOMING REQUESTS ROUTE ---
+    // --- INCOMING REQUESTS ROUTES ---
     GoRoute(
       path: '/incoming-requests',
       builder: (context, state) => const IncomingRequestsPage(),
+    ),
+    GoRoute(
+      path: '/incoming-requests/:id', // New route
+      builder: (context, state) => IncomingRequestDetailsPage(
+        id: state.pathParameters['id']!,
+      ),
     ),
 
     // --- CHAT ROUTE ---
@@ -163,7 +162,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/confirmed-bookings',
       builder: (context, state) => const ConfirmedBookingsPage(),
-    ),    
+    ),
   ],
 
   // --- REDIRECT LOGIC ---
@@ -171,8 +170,6 @@ final GoRouter appRouter = GoRouter(
     final authState = BlocProvider.of<AuthBloc>(context, listen: false).state;
     final isAuthenticated = authState is Authenticated;
     final targetPath = state.uri.path;
-
-    // Retrieve user role and ID for RBAC check
     final userRole = isAuthenticated ? (authState as Authenticated).user.role : null;
     final userId = isAuthenticated ? (authState as Authenticated).user.id : null;
 
@@ -217,17 +214,17 @@ final GoRouter appRouter = GoRouter(
     }
 
     // D. RBAC: INCOMING REQUESTS (Providers only)
-    if (targetPath == '/incoming-requests') {
+    if (targetPath.startsWith('/incoming-requests')) { // Updated to cover /incoming-requests/:id
       if (userRole != Role.provider) {
-        print('DEBUG: Redirecting non-provider from /incoming-requests to /');
+        print('DEBUG: Redirecting non-provider from $targetPath to /');
         return '/';
       }
-      print('DEBUG: Allowing provider access to /incoming-requests');
+      print('DEBUG: Allowing provider access to $targetPath');
       return null;
     }
 
     // E. RBAC: PAYMENT PAGE (Customers only)
-    if (targetPath.startsWith('/payment')) {
+    if (targetPath.startsWith('/payment/')) {
       if (!isAuthenticated) {
         print('DEBUG: Redirecting unauthenticated user from $targetPath to /login');
         return '/login';
@@ -240,18 +237,30 @@ final GoRouter appRouter = GoRouter(
       return null;
     }
 
-    // F. RBAC: CHAT PAGE (Customers and Providers only)
+    // F. RBAC: PAYMENT STATUS PAGE (Providers only)
+    if (targetPath.startsWith('/payment-status/')) {
+      if (!isAuthenticated) {
+        print('DEBUG: Redirecting unauthenticated user from $targetPath to /login');
+        return '/login';
+      }
+      if (userRole != Role.provider) {
+        print('DEBUG: Redirecting non-provider from $targetPath to /');
+        return '/';
+      }
+      print('DEBUG: Allowing provider access to $targetPath');
+      return null;
+    }
+
+    // G. RBAC: CHAT PAGE (Customers and Providers only)
     if (targetPath.startsWith('/chat')) {
       if (!isAuthenticated) {
         print('DEBUG: Redirecting unauthenticated user from $targetPath to /login');
         return '/login';
       }
-      // Check if userRole is customer or provider (using enum comparison)
       if (userRole != Role.customer && userRole != Role.provider) {
         print('DEBUG: Redirecting non-customer/provider from $targetPath to /login');
         return '/login';
       }
-      // Additional check: Ensure user is part of the booking
       final pathSegments = state.uri.path.split('/');
       if (pathSegments.length >= 5) {
         final customerId = pathSegments[3];
@@ -265,7 +274,7 @@ final GoRouter appRouter = GoRouter(
       return null;
     }
 
-    // G. RBAC: Prevent providers/admin from registration page
+    // H. RBAC: Prevent providers/admin from registration page
     if (targetPath == '/provider-registration') {
       if (userRole == Role.provider || userRole == Role.admin) {
         print('DEBUG: Redirecting provider/admin from /provider-registration to /');
