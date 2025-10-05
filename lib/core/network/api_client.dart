@@ -69,10 +69,10 @@ class ApiClient {
         'success': true,
         'token': 'dummy_jwt_token',
         'user': {
-          'id': 'customer1',
+          'id': 'provider1',
           'name': 'Test User',
           'phone_number': phoneNumber,
-          'role': 'customer'
+          'role': 'provider'
         }
       };
     } else {

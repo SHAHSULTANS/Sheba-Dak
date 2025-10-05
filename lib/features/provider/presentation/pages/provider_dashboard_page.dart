@@ -1,14 +1,94 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:smartsheba/core/network/api_client.dart';
 import 'package:smartsheba/core/theme/app_theme.dart';
 import 'package:smartsheba/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
 import 'package:smartsheba/core/utils/dummy_data.dart';
 import 'package:smartsheba/features/booking/domain/entities/booking_entity.dart';
 
-class ProviderDashboardPage extends StatelessWidget {
+class ProviderDashboardPage extends StatefulWidget {
   const ProviderDashboardPage({super.key});
+
+  @override
+  State<ProviderDashboardPage> createState() => _ProviderDashboardPageState();
+}
+
+class _ProviderDashboardPageState extends State<ProviderDashboardPage> 
+    with SingleTickerProviderStateMixin {
+  bool _isLoading = true;
+  String _errorMessage = '';
+  List<BookingEntity> _bookings = [];
+  final Set<String> _processingBookings = {};
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+    DummyData.initializeAllData(); // Initialize DummyData for bookings and messages
+    _loadBookings();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadBookings() async {
+    final state = context.read<AuthBloc>().state;
+    if (state is Authenticated && state.user.role == Role.provider) {
+      try {
+        setState(() {
+          _isLoading = true;
+          _errorMessage = '';
+        });
+
+        final bookings = await ApiClient.getBookingsByUser(state.user.id, 'provider');
+
+        setState(() {
+          _bookings = bookings;
+          _isLoading = false;
+        });
+      } catch (e) {
+        setState(() {
+          _errorMessage = 'বুকিং লোড করতে সমস্যা হয়েছে: ${e.toString()}';
+          _isLoading = false;
+        });
+      }
+    } else {
+      setState(() {
+        _errorMessage = 'অনুমোদিত নয়। এই ড্যাশবোর্ড শুধুমাত্র প্রোভাইডারদের জন্য।';
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Booking categorization aligned with DummyData
+  List<BookingEntity> get _incomingBookings => _bookings
+      .where((b) => b.status == BookingStatus.pending)
+      .toList()
+    ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+
+  List<BookingEntity> get _confirmedBookings => _bookings
+      .where((b) =>
+          b.status == BookingStatus.confirmed ||
+          b.status == BookingStatus.paymentPending ||
+          b.status == BookingStatus.paymentCompleted)
+      .toList()
+    ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+
+  List<BookingEntity> get _activeBookings => _bookings
+      .where((b) => b.status == BookingStatus.inProgress)
+      .toList()
+    ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+
+  List<BookingEntity> get _completedBookings => _bookings
+      .where((b) => b.status == BookingStatus.completed)
+      .toList()
+    ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
 
   @override
   Widget build(BuildContext context) {
@@ -33,376 +113,670 @@ class ProviderDashboardPage extends StatelessWidget {
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
           IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('নোটিফিকেশন ফিচার শীঘ্রই আসছে!')),
-              );
-            },
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadBookings,
+            tooltip: 'রিফ্রেশ',
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/incoming-requests'),
-        backgroundColor: theme.primaryColor,
-        child: const Icon(Icons.list_alt, color: Colors.white),
-        tooltip: 'নতুন রিকোয়েস্ট দেখুন',
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48.0),
+          child: Container(
+            color: Colors.white,
+            child: TabBar(
+              controller: _tabController,
+              labelColor: AppColors.primary,
+              unselectedLabelColor: Colors.grey.shade600,
+              indicatorColor: AppColors.primary,
+              indicatorWeight: 3,
+              tabs: const [
+                Tab(text: 'ইনকামিং'),
+                Tab(text: 'গ্রহণকৃত'),
+                Tab(text: 'চলমান'),
+                Tab(text: 'সম্পন্ন'),
+              ],
+            ),
+          ),
+        ),
       ),
       body: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
-          if (state is Authenticated && state.user.role == Role.provider) {
-            // DummyData.getPendingBookingsByProvider should return bookings with status 'pending' OR 'paymentPending'
-            // Assuming DummyData is updated to include 'paymentPending' in pending requests
-            final pendingBookings = DummyData.getPendingBookingsByProvider(state.user.id);
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Welcome Section
-                  AnimatedOpacity(
-                    opacity: 1.0,
-                    duration: const Duration(milliseconds: 500),
-                    child: Text(
-                      'স্বাগতম, ${state.user.name}',
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'আপনার সেবা পরিচালনা করুন এবং নতুন রিকোয়েস্ট দেখুন',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  const Divider(height: 32, thickness: 1),
-
-                  // Stats Section
-                  Text(
-                    'আপনার পরিসংখ্যান',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildStatCard(
-                        context,
-                        title: 'মোট কাজ',
-                        value: '25',
-                        icon: Icons.work_outline,
-                        color: Colors.blue,
-                      ),
-                      _buildStatCard(
-                        context,
-                        title: 'আজকের রিকোয়েস্ট',
-                        value: pendingBookings.length.toString(),
-                        icon: Icons.event_available,
-                        color: Colors.green,
-                      ),
-                      _buildStatCard(
-                        context,
-                        title: 'রেটিং',
-                        value: '4.5',
-                        icon: Icons.star_border,
-                        color: Colors.amber,
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // Pending Requests Section
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'ইনকামিং রিকোয়েস্টস',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => context.go('/incoming-requests'),
-                        child: const Text(
-                          'সব দেখুন',
-                          style: TextStyle(color: Colors.blue),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  pendingBookings.isEmpty
-                      ? Center(
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.inbox_outlined,
-                                size: 48,
-                                color: Colors.grey.shade400,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'এই সপ্তাহে কোনো নতুন রিকোয়েস্ট নেই',
-                                style: theme.textTheme.bodyLarge?.copyWith(
-                                  color: Colors.grey.shade600,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: pendingBookings.length > 3 ? 3 : pendingBookings.length,
-                          itemBuilder: (context, index) {
-                            final booking = pendingBookings[index];
-                            return _buildBookingCard(context, booking, theme);
-                          },
-                        ),
-
-                  const SizedBox(height: 32),
-
-                  // Confirmed Bookings Section
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'গ্রহণকৃত বুকিংস',
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => context.go('/confirmed-bookings'),
-                        child: const Text(
-                          'সব দেখুন',
-                          style: TextStyle(color: Colors.blue),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _buildConfirmedBookingsPreview(context, state.user.id, theme),
-                ],
-              ),
-            );
+          if (state is! Authenticated || state.user.role != Role.provider) {
+            return _buildUnauthorizedView(theme);
           }
-          return Center(
-            child: Text(
-              'অনুমোদিত নয়। এই ড্যাশবোর্ড শুধুমাত্র প্রোভাইডারদের জন্য।',
-              style: theme.textTheme.bodyLarge?.copyWith(color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-          );
+          if (_isLoading) {
+            return _buildLoadingView();
+          }
+          if (_errorMessage.isNotEmpty) {
+            return _buildErrorView(theme);
+          }
+          return _buildTabView(context, state.user, theme);
         },
       ),
     );
   }
 
-  Widget _buildStatCard(
-    BuildContext context, {
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color color,
-  }) {
-    return AnimatedOpacity(
-      opacity: 1.0,
-      duration: const Duration(milliseconds: 700),
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Container(
-          width: 110,
-          padding: const EdgeInsets.all(16.0),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [color.withOpacity(0.1), Colors.white],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 8),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, color: Colors.black87),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBookingCard(
-    BuildContext context,
-    BookingEntity booking,
-    ThemeData theme,
-  ) {
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () => context.go('/incoming-requests'),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: theme.primaryColor.withOpacity(0.1),
-                child: Icon(
-                  _getCategoryIcon(booking.serviceCategory),
-                  color: theme.primaryColor,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      booking.serviceCategory,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'তারিখ: ${booking.scheduledAt.toString().substring(0, 16)}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                    Text(
-                      'মূল্য: ৳${booking.price.toStringAsFixed(0)}',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.circle,
-                color: Colors.orange, // Hardcoded orange for pending/paymentPending
-                size: 12,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConfirmedBookingsPreview(BuildContext context, String providerId, ThemeData theme) {
-    final confirmedBookings = DummyData.getBookingsByProvider(providerId)
-        .where((booking) =>
-            booking.status == BookingStatus.confirmed ||
-            booking.status == BookingStatus.inProgress)
-        .toList()
-      ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
-
-    if (confirmedBookings.isEmpty) {
-      return Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
+  Widget _buildUnauthorizedView(ThemeData theme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.check_circle_outline, color: Colors.grey.shade400),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'কোনো গ্রহণকৃত বুকিং নেই\nইনকামিং রিকোয়েস্ট থেকে বুকিং গ্রহণ করুন',
-                style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey.shade600),
+            const Icon(Icons.lock_outline, color: Colors.red, size: 80),
+            const SizedBox(height: 16),
+            Text(
+              'অনুমোদিত নয়। এই ড্যাশবোর্ড শুধুমাত্র প্রোভাইডারদের জন্য।',
+              style: theme.textTheme.bodyLarge?.copyWith(color: Colors.red),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingView() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 6,
+      itemBuilder: (context, index) => Card(
+        elevation: 2,
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Colors.grey.shade300,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 120,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          width: 80,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 80,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  Container(
+                    width: 60,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorView(ThemeData theme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, color: AppColors.error, size: 80),
+            const SizedBox(height: 16),
+            Text(
+              _errorMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppColors.error,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _loadBookings,
+              icon: const Icon(Icons.refresh, size: 20),
+              label: const Text('আবার চেষ্টা করুন'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ],
         ),
-      );
-    }
-
-    return Column(
-      children: confirmedBookings.take(2).map((booking) => Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        margin: const EdgeInsets.only(bottom: 8),
-        child: ListTile(
-          leading: CircleAvatar(
-            backgroundColor: _getStatusColor(booking.status).withOpacity(0.1),
-            child: Icon(
-              _getStatusIcon(booking.status),
-              color: _getStatusColor(booking.status),
-              size: 20,
-            ),
-          ),
-          title: Text(
-            booking.serviceCategory,
-            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-          ),
-          subtitle: Text(
-            '${_formatDate(booking.scheduledAt)} - ${_formatTime(booking.scheduledAt)}',
-            style: theme.textTheme.bodySmall,
-          ),
-          trailing: Text(
-            _getStatusText(booking.status),
-            style: TextStyle(
-              color: _getStatusColor(booking.status),
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
-          ),
-          onTap: () => context.go('/confirmed-bookings'),
-        ),
-      )).toList(),
+      ),
     );
   }
 
-  IconData _getCategoryIcon(String category) {
-    switch (category.toLowerCase()) {
-      case 'plumbing':
-        return Icons.plumbing;
-      case 'electrical':
-        return Icons.electrical_services;
-      case 'cleaning':
-        return Icons.cleaning_services;
-      default:
-        return Icons.build;
+  Widget _buildTabView(BuildContext context, UserEntity user, ThemeData theme) {
+    final totalEarnings = _bookings
+        .where((b) => b.status == BookingStatus.completed || b.status == BookingStatus.paymentCompleted)
+        .fold(0.0, (sum, b) => sum + b.price);
+
+    return Column(
+      children: [
+        // Stats Header
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildStatItem('মোট আয়', '৳${totalEarnings.toStringAsFixed(0)}', Icons.account_balance_wallet, Colors.green),
+              _buildStatItem('ইনকামিং', _incomingBookings.length.toString(), Icons.pending_actions, Colors.orange),
+              _buildStatItem('গ্রহণকৃত', _confirmedBookings.length.toString(), Icons.check_circle, Colors.blue),
+              _buildStatItem('সম্পন্ন', _completedBookings.length.toString(), Icons.verified, AppColors.success),
+            ],
+          ),
+        ),
+        // Tab Content
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildBookingList(_incomingBookings, 'কোনো নতুন রিকোয়েস্ট নেই', 'নতুন রিকোয়েস্টের জন্য অপেক্ষা করুন'),
+              _buildBookingList(_confirmedBookings, 'কোনো গ্রহণকৃত বুকিং নেই', 'ইনকামিং রিকোয়েস্ট থেকে বুকিং গ্রহণ করুন'),
+              _buildBookingList(_activeBookings, 'কোনো চলমান বুকিং নেই', 'গ্রহণকৃত বুকিং থেকে সেবা শুরু করুন'),
+              _buildBookingList(_completedBookings, 'কোনো সম্পন্ন বুকিং নেই', 'চলমান বুকিং সম্পন্ন করুন'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatItem(String title, String value, IconData icon, Color color) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Colors.grey,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBookingList(List<BookingEntity> bookings, String emptyMessage, String emptySubtitle) {
+    if (bookings.isEmpty) {
+      return _buildEmptyTabView(
+        icon: Icons.inbox_outlined,
+        message: emptyMessage,
+        subtitle: emptySubtitle,
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadBookings,
+      backgroundColor: Colors.white,
+      color: AppColors.primary,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        physics: const BouncingScrollPhysics(),
+        itemCount: bookings.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 12),
+        itemBuilder: (context, index) => _buildBookingCard(bookings[index]),
+      ),
+    );
+  }
+
+  Widget _buildEmptyTabView({required IconData icon, required String message, required String subtitle}) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 60, color: Colors.grey.shade400),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            style: const TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBookingCard(BookingEntity booking) {
+    final isProcessing = _processingBookings.contains(booking.id);
+    final customer = DummyData.getUserById(booking.customerId); // Updated to getUserById
+
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: isProcessing ? null : () => _handleCardTap(booking),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor: _getStatusColor(booking.status).withOpacity(0.1),
+                        child: Icon(
+                          _getStatusIcon(booking.status),
+                          color: _getStatusColor(booking.status),
+                          size: 20,
+                        ),
+                      ),
+                      if (isProcessing)
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          booking.serviceCategory,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'গ্রাহক: ${customer.name}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'ঠিকানা: ${customer.address}, ${customer.city}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _formatDateTime(booking.scheduledAt),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          booking.description ?? 'বিবরণ নেই',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade800,
+                            fontStyle: booking.description == null ? FontStyle.italic : FontStyle.normal,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _getStatusColor(booking.status).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      _getStatusText(booking.status),
+                      style: TextStyle(
+                        color: _getStatusColor(booking.status),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Divider(height: 1, thickness: 1),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '৳${booking.price.toStringAsFixed(0)}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                  _buildActionButtons(booking, isProcessing),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(BookingEntity booking, bool isProcessing) {
+    switch (booking.status) {
+      case BookingStatus.pending:
+        return Row(
+          children: [
+            OutlinedButton(
+              onPressed: isProcessing
+                  ? null
+                  : () => _updateBookingStatus(booking.id, BookingStatus.cancelled),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.error,
+                side: BorderSide(color: AppColors.error),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              child: const Text('প্রত্যাখ্যান'),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: isProcessing
+                  ? null
+                  : () => _updateBookingStatus(booking.id, BookingStatus.confirmed),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              child: const Text('গ্রহণ করুন'),
+            ),
+          ],
+        );
+
+      case BookingStatus.paymentPending:
+      case BookingStatus.confirmed:
+        return Row(
+          children: [
+            OutlinedButton(
+              onPressed: isProcessing ? null : () => _handleCardTap(booking),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.blue,
+                side: const BorderSide(color: Colors.blue),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              child: const Text('পেমেন্ট স্ট্যাটাস দেখুন'),
+            ),
+            const SizedBox(width: 8),
+            OutlinedButton(
+              onPressed: isProcessing
+                  ? null
+                  : () => context.go('/chat/${booking.id}/${booking.customerId}/${booking.providerId}'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.blue,
+                side: const BorderSide(color: Colors.blue),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              child: const Text('চ্যাট'),
+            ),
+          ],
+        );
+
+
+
+
+      case BookingStatus.paymentCompleted:
+        return ElevatedButton(
+          onPressed: isProcessing
+              ? null
+              : () => _updateBookingStatus(booking.id, BookingStatus.inProgress),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          child: const Text('সেবা শুরু'),
+        );
+
+      case BookingStatus.inProgress:
+        return Row(
+          children: [
+            OutlinedButton(
+              onPressed: isProcessing
+                  ? null
+                  : () => context.go('/chat/${booking.id}/${booking.customerId}/${booking.providerId}'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.blue,
+                side: const BorderSide(color: Colors.blue),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              child: const Text('চ্যাট'),
+            ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: isProcessing
+                  ? null
+                  : () => _updateBookingStatus(booking.id, BookingStatus.completed),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              child: const Text('সম্পন্ন করুন'),
+            ),
+          ],
+        );
+
+      case BookingStatus.completed:
+        return OutlinedButton(
+          onPressed: isProcessing ? null : () => _viewFeedback(booking),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.orange,
+            side: const BorderSide(color: Colors.orange),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          child: const Text('ফিডব্যাক'),
+        );
+
+      case BookingStatus.cancelled:
+        return Text(
+          'বাতিল হয়েছে',
+          style: TextStyle(
+            color: AppColors.error,
+            fontWeight: FontWeight.w500,
+            fontStyle: FontStyle.italic,
+          ),
+        );
     }
   }
 
-  // Helpers for confirmed bookings (UPDATED)
+  void _handleCardTap(BookingEntity booking) {
+    print('DEBUG: Handling card tap for booking: ${booking.id}');
+    print('DEBUG: Booking status: ${booking.status}');
+    
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated) {
+      print('DEBUG: Current user role: ${authState.user.role}');
+      print('DEBUG: Current user ID: ${authState.user.id}');
+    } else {
+      print('DEBUG: User not authenticated');
+    }
+
+    try {
+      if (booking.status == BookingStatus.pending) {
+        print('DEBUG: Navigating to /incoming-requests/${booking.id}');
+        context.go('/incoming-requests/${booking.id}');
+      } else if (booking.status == BookingStatus.paymentPending || booking.status == BookingStatus.confirmed) {
+        print('DEBUG: Attempting to navigate to /payment-status/${booking.id}');
+        context.go('/payment-status/${booking.id}');
+        print('DEBUG: Navigation to /payment-status/${booking.id} completed');
+      } else if (booking.status == BookingStatus.completed) {
+        print('DEBUG: Showing feedback for booking ${booking.id}');
+        _viewFeedback(booking);
+      } else {
+        print('DEBUG: Navigating to /chat/${booking.id}/${booking.customerId}/${booking.providerId}');
+        context.go('/chat/${booking.id}/${booking.customerId}/${booking.providerId}');
+      }
+    } catch (e) {
+      print('DEBUG: Navigation error for booking ${booking.id}: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('নেভিগেশন ত্রুটি: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+    }
+  }
+    
+  void _viewFeedback(BookingEntity booking) {
+    final customer = DummyData.getUserById(booking.customerId);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('গ্রাহক ফিডব্যাক - ${booking.serviceCategory}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('গ্রাহক: ${customer.name}'),
+            const SizedBox(height: 8),
+            Text('বুকিং আইডি: ${booking.id}'),
+            const SizedBox(height: 8),
+            const Text('ফিডব্যাক: এই বুকিংয়ের জন্য ফিডব্যাক সিস্টেম আসছে!'),
+            const SizedBox(height: 8),
+            Text(
+              'সময়: ${_formatDateTime(booking.scheduledAt)}',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('বন্ধ করুন'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateBookingStatus(String bookingId, BookingStatus newStatus) async {
+    final state = context.read<AuthBloc>().state;
+    if (state is! Authenticated) return;
+
+    setState(() {
+      _processingBookings.add(bookingId);
+    });
+
+    try {
+      final result = await ApiClient.updateBookingStatus(bookingId, newStatus, 'provider');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'স্ট্যাটাস আপডেট করা হয়েছে'),
+          backgroundColor: newStatus == BookingStatus.cancelled ? AppColors.error : AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+      await _loadBookings();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('স্ট্যাটাস আপডেট করতে সমস্যা: ${e.toString()}'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+    } finally {
+      setState(() {
+        _processingBookings.remove(bookingId);
+      });
+    }
+  }
+
   Color _getStatusColor(BookingStatus status) {
     switch (status) {
       case BookingStatus.pending:
@@ -410,8 +784,8 @@ class ProviderDashboardPage extends StatelessWidget {
       case BookingStatus.paymentPending:
         return Colors.deepOrange;
       case BookingStatus.confirmed:
-        return Colors.green;
-      case BookingStatus.paymentCompleted: // <-- ADDED
+        return Colors.blue;
+      case BookingStatus.paymentCompleted:
         return Colors.green.shade700;
       case BookingStatus.inProgress:
         return AppColors.primary;
@@ -430,7 +804,7 @@ class ProviderDashboardPage extends StatelessWidget {
         return Icons.payment;
       case BookingStatus.confirmed:
         return Icons.check_circle_outline;
-      case BookingStatus.paymentCompleted: // <-- ADDED
+      case BookingStatus.paymentCompleted:
         return Icons.verified;
       case BookingStatus.inProgress:
         return Icons.build_circle_outlined;
@@ -446,10 +820,10 @@ class ProviderDashboardPage extends StatelessWidget {
       case BookingStatus.pending:
         return 'অপেক্ষমাণ';
       case BookingStatus.paymentPending:
-        return 'পেমেন্ট অপেক্ষমান';
+        return 'পেমেন্ট অপেক্ষমাণ';
       case BookingStatus.confirmed:
         return 'গ্রহণ করা হয়েছে';
-      case BookingStatus.paymentCompleted: // <-- ADDED
+      case BookingStatus.paymentCompleted:
         return 'পেমেন্ট সম্পন্ন';
       case BookingStatus.inProgress:
         return 'চলমান';
@@ -460,10 +834,9 @@ class ProviderDashboardPage extends StatelessWidget {
     }
   }
 
-  String _formatDate(DateTime date) => '${date.day}-${date.month}-${date.year}';
-
-  String _formatTime(DateTime date) {
-    final time = TimeOfDay.fromDateTime(date);
-    return '${time.hour}:${time.minute.toString().padLeft(2, '0')}';
+  String _formatDateTime(DateTime date) {
+    final dateStr = '${date.day}-${date.month}-${date.year}';
+    final timeStr = '${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    return '$dateStr, $timeStr';
   }
 }
