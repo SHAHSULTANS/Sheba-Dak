@@ -137,7 +137,7 @@ class DummyData {
       bookingId: 'booking4',
       senderId: 'provider1',
       recipientId: 'customer1',
-      message: 'Thanks for the payment! I’ll start tomorrow at 10 AM.',
+      message: 'Thanks for the payment! Ill start tomorrow at 10 AM.',
       timestamp: DateTime.now().subtract(Duration(hours: 2)),
     ));
   }
@@ -172,6 +172,18 @@ class DummyData {
   // Bookings
   // ==============================
   static final List<BookingEntity> _bookings = [];
+
+  // NEW METHOD: Update booking status
+  static void updateBookingStatus(String bookingId, BookingStatus newStatus) {
+    final index = _bookings.indexWhere((b) => b.id == bookingId);
+    if (index != -1) {
+      final oldBooking = _bookings[index];
+      _bookings[index] = oldBooking.copyWith(status: newStatus);
+      print('DEBUG: Updated booking $bookingId status from ${oldBooking.status} to $newStatus');
+    } else {
+      print('DEBUG: Booking $bookingId not found for status update');
+    }
+  }
 
   static void addBooking(BookingEntity booking) {
     _bookings.add(booking);
@@ -210,7 +222,13 @@ class DummyData {
       ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
   }
 
-  static List<BookingEntity> getInternalBookingsList() => List.unmodifiable(_bookings);
+  static List<BookingEntity> getInternalBookingsList() {
+    if (_bookings.isEmpty) {
+      print('DEBUG: Bookings list is empty, reinitializing');
+      initDummyBookings();
+    }
+    return List<BookingEntity>.from(_bookings); // Return a modifiable copy
+  }
 
   static void initDummyBookings() {
     _bookings.clear(); // Clear existing bookings to avoid duplicates
