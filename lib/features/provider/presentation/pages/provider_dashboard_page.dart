@@ -26,8 +26,8 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-    DummyData.initializeAllData(); // Initialize DummyData for bookings and messages
+    _tabController = TabController(length: 6, vsync: this);
+    DummyData.initializeAllData();
     _loadBookings();
   }
 
@@ -66,17 +66,24 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
     }
   }
 
-  // Booking categorization aligned with DummyData
+  // Booking categorization
   List<BookingEntity> get _incomingBookings => _bookings
       .where((b) => b.status == BookingStatus.pending)
       .toList()
     ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
 
+  List<BookingEntity> get _paymentPendingBookings => _bookings
+      .where((b) => b.status == BookingStatus.paymentPending)
+      .toList()
+    ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+
   List<BookingEntity> get _confirmedBookings => _bookings
-      .where((b) =>
-          b.status == BookingStatus.confirmed ||
-          b.status == BookingStatus.paymentPending ||
-          b.status == BookingStatus.paymentCompleted)
+      .where((b) => b.status == BookingStatus.confirmed)
+      .toList()
+    ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+
+  List<BookingEntity> get _readyToStartBookings => _bookings
+      .where((b) => b.status == BookingStatus.paymentCompleted)
       .toList()
     ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
 
@@ -124,13 +131,16 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
             color: Colors.white,
             child: TabBar(
               controller: _tabController,
+              isScrollable: true, // FIXED: Make tabs scrollable for mobile
               labelColor: AppColors.primary,
               unselectedLabelColor: Colors.grey.shade600,
               indicatorColor: AppColors.primary,
               indicatorWeight: 3,
               tabs: const [
                 Tab(text: 'ইনকামিং'),
+                Tab(text: 'পেমেন্ট অপেক্ষমাণ'),
                 Tab(text: 'গ্রহণকৃত'),
+                Tab(text: 'প্রস্তুত'),
                 Tab(text: 'চলমান'),
                 Tab(text: 'সম্পন্ন'),
               ],
@@ -289,7 +299,7 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
 
   Widget _buildTabView(BuildContext context, UserEntity user, ThemeData theme) {
     final totalEarnings = _bookings
-        .where((b) => b.status == BookingStatus.completed || b.status == BookingStatus.paymentCompleted)
+        .where((b) => b.status == BookingStatus.completed)
         .fold(0.0, (sum, b) => sum + b.price);
 
     return Column(
@@ -306,7 +316,10 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
             children: [
               _buildStatItem('মোট আয়', '৳${totalEarnings.toStringAsFixed(0)}', Icons.account_balance_wallet, Colors.green),
               _buildStatItem('ইনকামিং', _incomingBookings.length.toString(), Icons.pending_actions, Colors.orange),
+              _buildStatItem('পেমেন্ট অপেক্ষমাণ', _paymentPendingBookings.length.toString(), Icons.payment, Colors.deepOrange),
               _buildStatItem('গ্রহণকৃত', _confirmedBookings.length.toString(), Icons.check_circle, Colors.blue),
+              _buildStatItem('প্রস্তুত', _readyToStartBookings.length.toString(), Icons.play_circle, Colors.purple),
+              _buildStatItem('চলমান', _activeBookings.length.toString(), Icons.build_circle, AppColors.primary),
               _buildStatItem('সম্পন্ন', _completedBookings.length.toString(), Icons.verified, AppColors.success),
             ],
           ),
@@ -317,8 +330,10 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
             controller: _tabController,
             children: [
               _buildBookingList(_incomingBookings, 'কোনো নতুন রিকোয়েস্ট নেই', 'নতুন রিকোয়েস্টের জন্য অপেক্ষা করুন'),
+              _buildBookingList(_paymentPendingBookings, 'কোনো পেমেন্ট অপেক্ষমাণ বুকিং নেই', 'পেমেন্টের জন্য অপেক্ষা করুন'),
               _buildBookingList(_confirmedBookings, 'কোনো গ্রহণকৃত বুকিং নেই', 'ইনকামিং রিকোয়েস্ট থেকে বুকিং গ্রহণ করুন'),
-              _buildBookingList(_activeBookings, 'কোনো চলমান বুকিং নেই', 'গ্রহণকৃত বুকিং থেকে সেবা শুরু করুন'),
+              _buildBookingList(_readyToStartBookings, 'কোনো প্রস্তুত বুকিং নেই', 'পেমেন্ট সম্পন্ন বুকিং থেকে সেবা শুরু করুন'),
+              _buildBookingList(_activeBookings, 'কোনো চলমান বুকিং নেই', 'প্রস্তুত বুকিং থেকে সেবা শুরু করুন'),
               _buildBookingList(_completedBookings, 'কোনো সম্পন্ন বুকিং নেই', 'চলমান বুকিং সম্পন্ন করুন'),
             ],
           ),
@@ -397,7 +412,7 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
 
   Widget _buildBookingCard(BookingEntity booking) {
     final isProcessing = _processingBookings.contains(booking.id);
-    final customer = DummyData.getUserById(booking.customerId); // Updated to getUserById
+    final customer = DummyData.getUserById(booking.customerId);
 
     return Card(
       elevation: 3,
@@ -569,7 +584,6 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
         );
 
       case BookingStatus.paymentPending:
-      case BookingStatus.confirmed:
         return Row(
           children: [
             OutlinedButton(
@@ -598,8 +612,36 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
           ],
         );
 
-
-
+      case BookingStatus.confirmed:
+        return Row(
+          children: [
+            ElevatedButton(
+              onPressed: isProcessing
+                  ? null
+                  : () => _updateBookingStatus(booking.id, BookingStatus.inProgress),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              child: const Text('সেবা শুরু'),
+            ),
+            const SizedBox(width: 8),
+            OutlinedButton(
+              onPressed: isProcessing
+                  ? null
+                  : () => context.go('/chat/${booking.id}/${booking.customerId}/${booking.providerId}'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.blue,
+                side: const BorderSide(color: Colors.blue),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              child: const Text('চ্যাট'),
+            ),
+          ],
+        );
 
       case BookingStatus.paymentCompleted:
         return ElevatedButton(
@@ -671,45 +713,54 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
   }
 
   void _handleCardTap(BookingEntity booking) {
-    print('DEBUG: Handling card tap for booking: ${booking.id}');
-    print('DEBUG: Booking status: ${booking.status}');
-    
+    print('DEBUG: Handling card tap for booking: ${booking.id}, status: ${booking.status}');
     final authState = context.read<AuthBloc>().state;
     if (authState is Authenticated) {
-      print('DEBUG: Current user role: ${authState.user.role}');
-      print('DEBUG: Current user ID: ${authState.user.id}');
+      print('DEBUG: Current user role: ${authState.user.role}, ID: ${authState.user.id}');
     } else {
       print('DEBUG: User not authenticated');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('অনুগ্রহ করে লগইন করুন'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+      return;
     }
 
     try {
       if (booking.status == BookingStatus.pending) {
         print('DEBUG: Navigating to /incoming-requests/${booking.id}');
         context.go('/incoming-requests/${booking.id}');
-      } else if (booking.status == BookingStatus.paymentPending || booking.status == BookingStatus.confirmed) {
-        print('DEBUG: Attempting to navigate to /payment-status/${booking.id}');
+      } else if (booking.status == BookingStatus.paymentPending) {
+        print('DEBUG: Navigating to /payment-status/${booking.id}');
         context.go('/payment-status/${booking.id}');
-        print('DEBUG: Navigation to /payment-status/${booking.id} completed');
+      } else if (booking.status == BookingStatus.confirmed || 
+                 booking.status == BookingStatus.paymentCompleted || 
+                 booking.status == BookingStatus.inProgress) {
+        print('DEBUG: Navigating to /chat/${booking.id}/${booking.customerId}/${booking.providerId}');
+        context.go('/chat/${booking.id}/${booking.customerId}/${booking.providerId}');
       } else if (booking.status == BookingStatus.completed) {
         print('DEBUG: Showing feedback for booking ${booking.id}');
         _viewFeedback(booking);
       } else {
-        print('DEBUG: Navigating to /chat/${booking.id}/${booking.customerId}/${booking.providerId}');
-        context.go('/chat/${booking.id}/${booking.customerId}/${booking.providerId}');
+        print('DEBUG: No action for cancelled booking ${booking.id}');
       }
     } catch (e) {
       print('DEBUG: Navigation error for booking ${booking.id}: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('নেভিগেশন ত্রুটি: ${e.toString()}'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       );
     }
   }
-    
+
   void _viewFeedback(BookingEntity booking) {
     final customer = DummyData.getUserById(booking.customerId);
     showDialog(
