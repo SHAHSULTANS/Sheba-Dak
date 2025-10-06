@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartsheba/core/network/api_client.dart';
-import '../../domain/entities/booking_entity.dart';
+import 'package:smartsheba/features/booking/domain/entities/booking_entity.dart';
 
 abstract class BookingEvent {}
 
@@ -41,12 +41,15 @@ class BookingInitial extends BookingState {}
 class BookingLoading extends BookingState {}
 
 class BookingSuccess extends BookingState {
-  final String bookingId; // Added for navigation
-  BookingSuccess(this.bookingId);
+  final String bookingId;
+  final String message;
+
+  BookingSuccess({required this.bookingId, required this.message});
 }
 
 class BookingFailure extends BookingState {
   final String message;
+
   BookingFailure(this.message);
 }
 
@@ -64,7 +67,10 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
           event.description,
         );
         if (response['success'] == true) {
-          emit(BookingSuccess(response['id']));
+          emit(BookingSuccess(
+            bookingId: response['id'],
+            message: response['message'] ?? 'বুকিং সফলভাবে তৈরি হয়েছে',
+          ));
         } else {
           emit(BookingFailure(response['message'] ?? 'বুকিং ব্যর্থ হয়েছে'));
         }
@@ -82,11 +88,15 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
           event.authRole,
         );
         if (response['success'] == true) {
-          emit(BookingSuccess(event.id));
+          emit(BookingSuccess(
+            bookingId: event.id,
+            message: response['message'] ?? 'স্ট্যাটাস আপডেট সফল',
+          ));
         } else {
           emit(BookingFailure(response['message'] ?? 'স্ট্যাটাস আপডেট ব্যর্থ হয়েছে'));
         }
       } catch (e) {
+        print('UpdateBookingStatusEvent error: $e');
         emit(BookingFailure('স্ট্যাটাস আপডেট ত্রুটি: $e'));
       }
     });

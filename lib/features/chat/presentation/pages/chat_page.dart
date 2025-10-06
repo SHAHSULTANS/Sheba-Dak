@@ -345,7 +345,7 @@ class _ChatPageState extends State<ChatPage> with SingleTickerProviderStateMixin
                           Container(
                             decoration: BoxDecoration(
                               image: DecorationImage(
-                                image: const AssetImage('assets/profile_photo.jpg'), // Add subtle pattern
+                                image: const AssetImage('assets'), // Add subtle pattern
                                 fit: BoxFit.cover,
                                 colorFilter: ColorFilter.mode(
                                   Colors.grey.shade50.withOpacity(0.3),
