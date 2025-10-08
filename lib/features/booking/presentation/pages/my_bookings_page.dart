@@ -1,3 +1,4 @@
+// lib/features/booking/presentation/pages/my_bookings_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -622,9 +623,9 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
             ),
             const SizedBox(width: 8),
             OutlinedButton.icon(
-              onPressed: isCancelling ? null : () => _submitFeedback(booking),
+              onPressed: isCancelling ? null : () => _submitReview(booking),
               icon: const Icon(Icons.star_border, size: 16),
-              label: const Text('ফিডব্যাক'),
+              label: const Text('রিভিউ দিন'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.orange,
                 side: const BorderSide(color: Colors.orange),
@@ -647,7 +648,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
         booking.status == BookingStatus.paymentPending) {
       _initiatePayment(booking.id);
     } else if (booking.status == BookingStatus.completed) {
-      _submitFeedback(booking);
+      _submitReview(booking);
     } else {
       _openChat(booking);
     }
@@ -661,36 +662,8 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
     context.go('/payment/$bookingId');
   }
 
-  void _submitFeedback(BookingEntity booking) {
-    // Placeholder: Navigate to a feedback page or show a dialog
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('ফিডব্যাক দিন'),
-        content: const Text('এই সেবার জন্য আপনার রেটিং এবং মন্তব্য দিন। (ভবিষ্যতে ফিডব্যাক ফর্ম যুক্ত হবে)'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('বন্ধ করুন'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('ফিডব্যাক জমা দেওয়া হয়েছে!'),
-                  backgroundColor: Colors.green,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            child: const Text('জমা দিন'),
-          ),
-        ],
-      ),
-    );
+  void _submitReview(BookingEntity booking) {
+    context.go('/review/${booking.id}');
   }
 
   void _showCancelConfirmation(BookingEntity booking) {

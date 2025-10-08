@@ -6,6 +6,7 @@ import '../../features/home/domain/entities/service.dart';
 import '../../features/provider/domain/entities/service_provider.dart';
 import '../../features/provider/domain/entities/provider_application.dart';
 import '../../features/chat/domain/entities/chat_message.dart';
+import 'package:smartsheba/features/booking/domain/entities/review_entity.dart';
 
 class DummyData {
   // ==============================
@@ -106,52 +107,169 @@ class DummyData {
 
   static void initDummyMessages() {
     _messages.clear();
-    // Sample messages for booking3 (confirmed, customer1 <-> provider1)
+    
+    // 🚀 FIX: Ensure messages exist for ALL customer1 bookings with proper IDs
+    print('DEBUG: Initializing dummy messages for customer1 bookings...');
+    
+    // Messages for booking1 (customer1 -> provider1)
     _messages.add(ChatMessage(
-      id: const Uuid().v4(),
+      id: 'msg_booking1_1',
+      bookingId: 'booking1',
+      senderId: 'customer1',
+      recipientId: 'provider1',
+      message: 'Hello, I need help with fixing a leaking pipe in my kitchen.',
+      timestamp: DateTime.now().subtract(const Duration(hours: 4)),
+    ));
+    _messages.add(ChatMessage(
+      id: 'msg_booking1_2',
+      bookingId: 'booking1',
+      senderId: 'provider1',
+      recipientId: 'customer1',
+      message: 'Sure, I can help with plumbing issues. When would be a good time?',
+      timestamp: DateTime.now().subtract(const Duration(hours: 3, minutes: 45)),
+    ));
+    _messages.add(ChatMessage(
+      id: 'msg_booking1_3',
+      bookingId: 'booking1',
+      senderId: 'customer1',
+      recipientId: 'provider1',
+      message: 'Tomorrow at 10 AM would work for me.',
+      timestamp: DateTime.now().subtract(const Duration(hours: 3, minutes: 30)),
+    ));
+
+    // Messages for booking2 (customer1 -> provider1)
+    _messages.add(ChatMessage(
+      id: 'msg_booking2_1',
+      bookingId: 'booking2',
+      senderId: 'customer1',
+      recipientId: 'provider1',
+      message: 'I have electrical wiring issues in my living room.',
+      timestamp: DateTime.now().subtract(const Duration(days: 1, hours: 2)),
+    ));
+    _messages.add(ChatMessage(
+      id: 'msg_booking2_2',
+      bookingId: 'booking2',
+      senderId: 'provider1',
+      recipientId: 'customer1',
+      message: 'I can help with electrical repairs. What specific issues are you facing?',
+      timestamp: DateTime.now().subtract(const Duration(days: 1, hours: 1)),
+    ));
+
+    // Messages for booking3 (customer1 -> provider1)
+    _messages.add(ChatMessage(
+      id: 'msg_booking3_1',
       bookingId: 'booking3',
       senderId: 'customer1',
       recipientId: 'provider1',
-      message: 'Hello, can you confirm the cleaning service for tomorrow?',
-      timestamp: DateTime.now().subtract(Duration(hours: 2)),
+      message: 'I need deep cleaning service for my apartment.',
+      timestamp: DateTime.now().subtract(const Duration(hours: 6)),
     ));
     _messages.add(ChatMessage(
-      id: const Uuid().v4(),
+      id: 'msg_booking3_2',
       bookingId: 'booking3',
       senderId: 'provider1',
       recipientId: 'customer1',
-      message: 'Yes, confirmed! Ill be there at 2 PM',
-      timestamp: DateTime.now().subtract(Duration(hours: 1)),
+      message: 'Confirmed! I\'ll be there at 2 PM for the cleaning service.',
+      timestamp: DateTime.now().subtract(const Duration(hours: 5)),
     ));
-    // Sample messages for booking4 (paymentCompleted, customer1 <-> provider1)
+
+    // Messages for booking4 (customer1 -> provider1)
     _messages.add(ChatMessage(
-      id: const Uuid().v4(),
+      id: 'msg_booking4_1',
       bookingId: 'booking4',
       senderId: 'customer1',
       recipientId: 'provider1',
       message: 'Payment completed for the painting service. When can you start?',
-      timestamp: DateTime.now().subtract(Duration(hours: 3)),
+      timestamp: DateTime.now().subtract(const Duration(hours: 3)),
     ));
     _messages.add(ChatMessage(
-      id: const Uuid().v4(),
+      id: 'msg_booking4_2',
       bookingId: 'booking4',
       senderId: 'provider1',
       recipientId: 'customer1',
-      message: 'Thanks for the payment! Ill start tomorrow at 10 AM.',
-      timestamp: DateTime.now().subtract(Duration(hours: 2)),
+      message: 'Thanks for the payment! I\'ll start tomorrow at 10 AM.',
+      timestamp: DateTime.now().subtract(const Duration(hours: 2)),
     ));
-  }
 
+    // Messages for booking5 (customer1 -> provider1)
+    _messages.add(ChatMessage(
+      id: 'msg_booking5_1',
+      bookingId: 'booking5',
+      senderId: 'provider1',
+      recipientId: 'customer1',
+      message: 'I\'m on my way for the plumbing service.',
+      timestamp: DateTime.now().subtract(const Duration(hours: 1)),
+    ));
+    _messages.add(ChatMessage(
+      id: 'msg_booking5_2',
+      bookingId: 'booking5',
+      senderId: 'customer1',
+      recipientId: 'provider1',
+      message: 'Great, I\'ll be waiting. The main gate will be open.',
+      timestamp: DateTime.now().subtract(const Duration(minutes: 45)),
+    ));
+
+    // Messages for booking6 (customer1 -> provider1)
+    _messages.add(ChatMessage(
+      id: 'msg_booking6_1',
+      bookingId: 'booking6',
+      senderId: 'provider1',
+      recipientId: 'customer1',
+      message: 'The office cleaning is complete. Everything looks great!',
+      timestamp: DateTime.now().subtract(const Duration(days: 2)),
+    ));
+    _messages.add(ChatMessage(
+      id: 'msg_booking6_2',
+      bookingId: 'booking6',
+      senderId: 'customer1',
+      recipientId: 'provider1',
+      message: 'Thank you for the excellent service! The office looks amazing.',
+      timestamp: DateTime.now().subtract(const Duration(days: 2, minutes: 30)),
+    ));
+
+    // Additional messages for different scenarios
+    _messages.add(ChatMessage(
+      id: 'msg_booking7_1',
+      bookingId: 'booking7',
+      senderId: 'customer1',
+      recipientId: 'provider2',
+      message: 'Do you provide emergency electrical services?',
+      timestamp: DateTime.now().subtract(const Duration(hours: 5)),
+    ));
+    _messages.add(ChatMessage(
+      id: 'msg_booking7_2',
+      bookingId: 'booking7',
+      senderId: 'provider2',
+      recipientId: 'customer1',
+      message: 'Yes, we provide 24/7 emergency electrical services.',
+      timestamp: DateTime.now().subtract(const Duration(hours: 4, minutes: 45)),
+    ));
+
+    print('DEBUG: Initialized ${_messages.length} dummy messages');
+    // Debug: Print all booking IDs with messages
+    final uniqueBookingIds = _messages.map((m) => m.bookingId).toSet().toList();
+    print('DEBUG: Messages available for booking IDs: $uniqueBookingIds');
+  }
+    
   static void addMessage(ChatMessage message) {
     _messages.add(message);
     print('DEBUG: New Message Added: ${message.id} for Booking ${message.bookingId}');
+    print('DEBUG: From: ${message.senderId} -> To: ${message.recipientId}');
+    print('DEBUG: Message: ${message.message}');
   }
 
   static List<ChatMessage> getMessagesByBooking(String bookingId) {
-    return _messages
+    final messages = _messages
         .where((m) => m.bookingId == bookingId)
         .toList()
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    
+    print('DEBUG: getMessagesByBooking($bookingId) found ${messages.length} messages');
+    for (var msg in messages) {
+      print('DEBUG: - ${msg.senderId} -> ${msg.recipientId}: ${msg.message}');
+    }
+    
+    return messages;
   }
 
   // ==============================
@@ -191,17 +309,27 @@ class DummyData {
   }
 
   static List<BookingEntity> getBookingsByProvider(String providerId) {
-    return _bookings
+    final bookings = _bookings
         .where((b) => b.providerId == providerId)
         .toList()
       ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+    
+    print('DEBUG: getBookingsByProvider($providerId) found ${bookings.length} bookings');
+    return bookings;
   }
 
   static List<BookingEntity> getBookingsByCustomer(String customerId) {
-    return _bookings
+    final bookings = _bookings
         .where((b) => b.customerId == customerId)
         .toList()
       ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+    
+    print('DEBUG: getBookingsByCustomer($customerId) found ${bookings.length} bookings');
+    for (var booking in bookings) {
+      print('DEBUG: - Booking ${booking.id}: ${booking.serviceCategory} (${booking.status})');
+    }
+    
+    return bookings;
   }
 
   static List<BookingEntity> getCustomerBookings(String customerId, {BookingStatus? status}) {
@@ -209,9 +337,12 @@ class DummyData {
         .where((b) => b.customerId == customerId)
         .toList()
       ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+    
     if (status != null) {
       customerBookings = customerBookings.where((b) => b.status == status).toList();
     }
+    
+    print('DEBUG: getCustomerBookings($customerId, status: $status) found ${customerBookings.length} bookings');
     return customerBookings;
   }
 
@@ -227,18 +358,41 @@ class DummyData {
       print('DEBUG: Bookings list is empty, reinitializing');
       initDummyBookings();
     }
-    return List<BookingEntity>.from(_bookings); // Return a modifiable copy
+    return List<BookingEntity>.from(_bookings);
+  }
+
+  static final List<ReviewEntity> _reviews = [];
+
+  static void addReview(ReviewEntity review) {
+    _reviews.add(review);
+    print('DEBUG: New Review Added: ${review.id} for Booking ${review.bookingId}');
+  }
+
+  static List<ReviewEntity> getReviewsByBooking(String bookingId) {
+    return _reviews
+        .where((r) => r.bookingId == bookingId)
+        .toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+  }
+
+  static List<ReviewEntity> getReviewsByProvider(String providerId) {
+    return _reviews
+        .where((r) => r.providerId == providerId)
+        .toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
   }
 
   static void initDummyBookings() {
-    _bookings.clear(); // Clear existing bookings to avoid duplicates
+    _bookings.clear();
+    print('DEBUG: Initializing dummy bookings for customer1...');
+    
     // Booking 1: Pending (Incoming tab for provider)
     addBooking(BookingEntity(
       id: 'booking1',
       customerId: 'customer1',
       providerId: 'provider1',
       serviceCategory: 'plumbing',
-      scheduledAt: DateTime.now().add(Duration(days: 1, hours: 10)),
+      scheduledAt: DateTime.now().add(const Duration(days: 1, hours: 10)),
       status: BookingStatus.pending,
       price: 500.0,
       description: 'Fix leaking pipe in kitchen',
@@ -249,7 +403,7 @@ class DummyData {
       customerId: 'customer1',
       providerId: 'provider1',
       serviceCategory: 'electrical',
-      scheduledAt: DateTime.now().add(Duration(days: 2, hours: 12)),
+      scheduledAt: DateTime.now().add(const Duration(days: 2, hours: 12)),
       status: BookingStatus.paymentPending,
       price: 800.0,
       description: 'Repair wiring in living room',
@@ -260,7 +414,7 @@ class DummyData {
       customerId: 'customer1',
       providerId: 'provider1',
       serviceCategory: 'cleaning',
-      scheduledAt: DateTime.now().add(Duration(hours: 5)),
+      scheduledAt: DateTime.now().add(const Duration(hours: 5)),
       status: BookingStatus.confirmed,
       price: 1500.0,
       description: 'Deep cleaning of apartment',
@@ -271,7 +425,7 @@ class DummyData {
       customerId: 'customer1',
       providerId: 'provider1',
       serviceCategory: 'painting',
-      scheduledAt: DateTime.now().add(Duration(days: 3)),
+      scheduledAt: DateTime.now().add(const Duration(days: 3)),
       status: BookingStatus.paymentCompleted,
       price: 1000.0,
       description: 'Wall painting for bedroom',
@@ -282,7 +436,7 @@ class DummyData {
       customerId: 'customer1',
       providerId: 'provider1',
       serviceCategory: 'plumbing',
-      scheduledAt: DateTime.now().subtract(Duration(hours: 2)),
+      scheduledAt: DateTime.now().subtract(const Duration(hours: 2)),
       status: BookingStatus.inProgress,
       price: 700.0,
       description: 'Install new toilet system',
@@ -293,7 +447,7 @@ class DummyData {
       customerId: 'customer1',
       providerId: 'provider1',
       serviceCategory: 'cleaning',
-      scheduledAt: DateTime.now().subtract(Duration(days: 3)),
+      scheduledAt: DateTime.now().subtract(const Duration(days: 3)),
       status: BookingStatus.completed,
       price: 1200.0,
       description: 'Completed office cleaning',
@@ -304,7 +458,7 @@ class DummyData {
       customerId: 'customer2',
       providerId: 'provider1',
       serviceCategory: 'painting',
-      scheduledAt: DateTime.now().subtract(Duration(days: 4)),
+      scheduledAt: DateTime.now().subtract(const Duration(days: 4)),
       status: BookingStatus.cancelled,
       price: 1000.0,
       description: 'Cancelled exterior painting',
@@ -315,11 +469,51 @@ class DummyData {
       customerId: 'customer2',
       providerId: 'provider2',
       serviceCategory: 'electrical',
-      scheduledAt: DateTime.now().add(Duration(days: 4, hours: 14)),
+      scheduledAt: DateTime.now().add(const Duration(days: 4, hours: 14)),
       status: BookingStatus.pending,
       price: 600.0,
       description: 'Install new light fixtures',
     ));
+
+    // Initialize dummy reviews for completed bookings
+    _reviews.clear();
+    _reviews.add(
+      ReviewEntity(
+        id: const Uuid().v4(),
+        bookingId: 'booking4',
+        providerId: 'provider1',
+        customerId: 'customer1',
+        rating: 4,
+        comment: 'Great service, but could be faster.',
+        createdAt: DateTime.now(),
+      ),
+    );
+    
+    print('DEBUG: Initialized ${_bookings.length} dummy bookings and ${_reviews.length} reviews');
+    print('DEBUG: Customer1 booking IDs: ${_bookings.where((b) => b.customerId == 'customer1').map((b) => b.id).toList()}');
+  }
+
+  static BookingEntity? getBookingById(String bookingId) {
+    final booking = _bookings.firstWhere(
+      (booking) => booking.id == bookingId,
+      orElse: () => BookingEntity(
+        id: 'error',
+        customerId: 'unknown',
+        providerId: 'unknown',
+        serviceCategory: 'Unknown Service',
+        scheduledAt: DateTime.now(),
+        status: BookingStatus.pending,
+        price: 0.0,
+        description: 'Booking not found',
+      ),
+    );
+    
+    print('DEBUG: getBookingById($bookingId) found: ${booking.id != 'error' ? booking.serviceCategory : 'NOT FOUND'}');
+    return booking.id != 'error' ? booking : null;
+  }
+
+  static bool hasReviewForBooking(String bookingId) {
+    return _reviews.any((review) => review.bookingId == bookingId);
   }
 
   // ==============================
@@ -621,8 +815,17 @@ class DummyData {
   // Initialize All Data
   // ==============================
   static void initializeAllData() {
+    print('🚀 DEBUG: Initializing all dummy data...');
     initDummyBookings();
     initDummyMessages();
-    print('DEBUG: DummyData initialized with ${_bookings.length} bookings and ${_messages.length} messages');
+    print('🚀 DEBUG: DummyData initialized with ${_bookings.length} bookings and ${_messages.length} messages');
+    
+    // Verify customer1 data
+    final customer1Bookings = getBookingsByCustomer('customer1');
+    print('🚀 DEBUG: Customer1 has ${customer1Bookings.length} bookings:');
+    for (var booking in customer1Bookings) {
+      final messages = getMessagesByBooking(booking.id);
+      print('🚀 DEBUG: - Booking ${booking.id}: ${messages.length} messages');
+    }
   }
 }

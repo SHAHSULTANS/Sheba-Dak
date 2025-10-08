@@ -7,6 +7,7 @@ import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
 import 'package:smartsheba/features/auth/presentation/pages/profile_veiw.dart';
 import 'package:smartsheba/features/booking/presentation/pages/incoming_requests_page.dart';
 import 'package:smartsheba/features/booking/presentation/pages/incoming_request_details_page.dart'; // New import
+import 'package:smartsheba/features/booking/presentation/pages/review_page.dart';
 import 'package:smartsheba/features/provider/presentation/pages/provider_confirmed_booking.dart';
 import 'package:smartsheba/features/auth/presentation/pages/login_page.dart';
 import 'package:smartsheba/features/auth/presentation/pages/register_page.dart';
@@ -163,7 +164,15 @@ final GoRouter appRouter = GoRouter(
       path: '/confirmed-bookings',
       builder: (context, state) => const ConfirmedBookingsPage(),
     ),
+
+    GoRoute(
+    path: '/review/:bookingId',
+    builder: (context, state) => ReviewPage(
+      bookingId: state.pathParameters['bookingId']!,
+    ),
+  ),
   ],
+  
 
   // --- REDIRECT LOGIC ---
   redirect: (context, state) {
@@ -274,6 +283,26 @@ final GoRouter appRouter = GoRouter(
       return null;
     }
 
+
+  // RBAC: REVIEW PAGE (Customers only)
+    if (targetPath.startsWith('/review')) {
+      if (!isAuthenticated) {
+        print('DEBUG: Redirecting unauthenticated user from $targetPath to /login');
+        return '/login';
+      }
+      if (userRole != Role.customer) {
+        print('DEBUG: Redirecting non-customer from $targetPath to /');
+        return '/';
+      }
+      print('DEBUG: Allowing customer access to $targetPath');
+      return null;
+    }
+
+
+
+
+    // ... existing redirect logic ...
+  
     // H. RBAC: Prevent providers/admin from registration page
     if (targetPath == '/provider-registration') {
       if (userRole == Role.provider || userRole == Role.admin) {
@@ -285,6 +314,9 @@ final GoRouter appRouter = GoRouter(
     print('DEBUG: No redirect needed for $targetPath');
     return null;
   },
+
+
+  
 
   errorBuilder: (context, state) => Scaffold(
     body: Center(child: Text('Page not found: ${state.uri}')),

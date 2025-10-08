@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
+import 'package:smartsheba/features/booking/domain/entities/review_entity.dart';
 import 'package:smartsheba/features/chat/domain/entities/chat_message.dart';
 import 'package:uuid/uuid.dart';
 import 'package:smartsheba/core/utils/dummy_data.dart';
@@ -47,10 +48,10 @@ class ApiClient {
         'success': true,
         'token': 'dummy_jwt_token',
         'user': {
-          'id': 'provider1',
+          'id': 'customer1',
           'name': 'Test User',
           'phone_number': phoneNumber,
-          'role': 'provider'
+          'role': 'customer'
         }
       };
     } else {
@@ -224,5 +225,52 @@ class ApiClient {
     await Future.delayed(const Duration(milliseconds: 300));
     // Return a default authenticated user (customer1)
     return DummyData.getUserById('customer1');
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+  static Future<Map<String, dynamic>> submitReview(
+    String bookingId,
+    String providerId,
+    String customerId,
+    int rating,
+    String? comment,
+  ) async {
+    await Future.delayed(const Duration(seconds: 1));
+    final id = const Uuid().v4();
+    final review = ReviewEntity(
+      id: id,
+      bookingId: bookingId,
+      providerId: providerId,
+      customerId: customerId,
+      rating: rating,
+      comment: comment,
+      createdAt: DateTime.now(),
+    );
+    DummyData.addReview(review);
+    return {
+      'success': true,
+      'id': id,
+      'message': 'রিভিউ সফলভাবে জমা দেওয়া হয়েছে',
+    };
+  }
+
+  static Future<List<ReviewEntity>> getReviewsByBooking(String bookingId) async {
+    await Future.delayed(const Duration(seconds: 1));
+    return DummyData.getReviewsByBooking(bookingId);
+  }
+
+  static Future<BookingEntity?> getBookingById(String bookingId) async {
+    await Future.delayed(const Duration(seconds: 1)); // Simulate API delay
+    return DummyData.getBookingById(bookingId);
   }
 }

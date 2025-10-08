@@ -1,7 +1,10 @@
+// lib/features/booking/presentation/bloc/booking_bloc.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:smartsheba/core/network/api_client.dart';
 import 'package:smartsheba/features/booking/domain/entities/booking_entity.dart';
+import 'package:smartsheba/features/booking/domain/entities/review_entity.dart';
 
+// ---------------- EVENTS ----------------
 abstract class BookingEvent {}
 
 class CreateBookingEvent extends BookingEvent {
@@ -34,6 +37,25 @@ class UpdateBookingStatusEvent extends BookingEvent {
   });
 }
 
+class SubmitReviewEvent extends BookingEvent {
+  final String bookingId;
+  final String providerId;
+  final String customerId;
+  final int rating;
+  final String? comment;
+
+  SubmitReviewEvent({
+    required this.bookingId,
+    required this.providerId,
+    required this.customerId,
+    required this.rating,
+    this.comment,
+  });
+}
+
+class ResetBookingState extends BookingEvent {}
+
+// ---------------- STATES ----------------
 abstract class BookingState {}
 
 class BookingInitial extends BookingState {}
@@ -53,6 +75,23 @@ class BookingFailure extends BookingState {
   BookingFailure(this.message);
 }
 
+class ReviewSuccess extends BookingState {
+  final String reviewId;
+  final String message;
+
+  ReviewSuccess({
+    required this.reviewId,
+    required this.message,
+  });
+}
+
+class ReviewFailure extends BookingState {
+  final String message;
+
+  ReviewFailure(this.message);
+}
+
+// ---------------- BLOC IMPLEMENTATION ----------------
 class BookingBloc extends Bloc<BookingEvent, BookingState> {
   BookingBloc() : super(BookingInitial()) {
     on<CreateBookingEvent>((event, emit) async {
@@ -66,6 +105,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
           event.price,
           event.description,
         );
+
         if (response['success'] == true) {
           emit(BookingSuccess(
             bookingId: response['id'],
@@ -87,6 +127,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
           event.newStatus,
           event.authRole,
         );
+
         if (response['success'] == true) {
           emit(BookingSuccess(
             bookingId: event.id,
@@ -96,9 +137,42 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
           emit(BookingFailure(response['message'] ?? 'স্ট্যাটাস আপডেট ব্যর্থ হয়েছে'));
         }
       } catch (e) {
-        print('UpdateBookingStatusEvent error: $e');
+        print('DEBUG: UpdateBookingStatusEvent error: $e');
         emit(BookingFailure('স্ট্যাটাস আপডেট ত্রুটি: $e'));
       }
+    });
+
+    on<SubmitReviewEvent>((event, emit) async {
+      emit(BookingLoading());
+      try {
+        final response = await ApiClient.submitReview(
+          event.bookingId,
+          event.providerId,
+          event.customerId,
+          event.rating,
+          event.comment,
+        );
+
+        print('DEBUG: SubmitReviewEvent response: $response'); // Debug log
+        if (response['success'] == true) {
+          print('DEBUG: Emitting ReviewSuccess for reviewId: ${response['id']}');
+          emit(ReviewSuccess(
+            reviewId: response['id'],
+            message: response['message'] ?? 'রিভিউ সফলভাবে জমা দেওয়া হয়েছে',
+          ));
+        } else {
+          print('DEBUG: Emitting ReviewFailure: ${response['message'] ?? 'রিভিউ জমা ব্যর্থ হয়েছে'}');
+          emit(ReviewFailure(response['message'] ?? 'রিভিউ জমা ব্যর্থ হয়েছে'));
+        }
+      } catch (e) {
+        print('DEBUG: SubmitReviewEvent error: $e');
+        emit(ReviewFailure('রিভিউ জমা করার সময় ত্রুটি: $e'));
+      }
+    });
+
+    on<ResetBookingState>((event, emit) {
+      print('DEBUG: Resetting BookingBloc state to BookingInitial');
+      emit(BookingInitial());
     });
   }
 }
