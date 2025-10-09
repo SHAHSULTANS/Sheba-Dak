@@ -180,7 +180,7 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
               _showPremiumSuccessAnimation();
               Future.delayed(const Duration(milliseconds: 2200), () {
                 context.read<BookingBloc>().add(ResetBookingState());
-                context.go('/my-bookings');
+                context.push('/my-bookings');
               });
             } else if (state is ReviewFailure) {
               HapticFeedback.heavyImpact();
@@ -605,7 +605,7 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
             ),
             child: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
           ),
-          onPressed: () => context.go('/my-bookings'),
+          onPressed: () => context.push('/my-bookings'),
         ),
       ),
     );
@@ -1319,7 +1319,7 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: _isLoading ? null : () => context.go('/my-bookings'),
+              onTap: _isLoading ? null : () => context.push('/my-bookings'),
               borderRadius: BorderRadius.circular(16),
               child: Center(
                 child: Row(
@@ -1416,7 +1416,7 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: () => context.go('/my-bookings'),
+                  onTap: () => context.push('/my-bookings'),
                   borderRadius: BorderRadius.circular(16),
                   child: Center(
                     child: Text(

@@ -104,7 +104,7 @@ class _ProfileCreationPageState extends State<ProfileCreationPage> {
       ),
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
-          if (state is Authenticated) context.go('/');
+          if (state is Authenticated) context.push('/');
           if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(

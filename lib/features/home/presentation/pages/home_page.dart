@@ -268,9 +268,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         child: InkWell(
           onTap: () {
             if (user.role == Role.provider) {
-              context.go('/provider-dashboard');
+              context.push('/provider-dashboard');
             } else {
-              context.go('/profile-view');
+              context.push('/profile-view');
             }
           },
           borderRadius: BorderRadius.circular(12),
@@ -531,7 +531,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     if (role == Role.provider) {
       return _buildActionCard(
         context: context,
-        onTap: () => context.go('/provider-dashboard'),
+        onTap: () => context.push('/provider-dashboard'),
         icon: Icons.dashboard_rounded,
         title: 'ড্যাশবোর্ডে যান',
         subtitle: 'নতুন রিকোয়েস্ট ও পরিসংখ্যান দেখুন',
@@ -547,7 +547,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             padding: const EdgeInsets.only(bottom: 16.0),
             child: _buildActionCard(
               context: context,
-              onTap: () => context.go('/provider-registration'),
+              onTap: () => context.push('/provider-registration'),
               icon: Icons.work_history_rounded,
               title: 'প্রোভাইডার হোন',
               subtitle: 'আপনার সেবা প্রদান শুরু করতে আবেদন করুন',
@@ -558,7 +558,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         _buildActionCard(
           context: context,
           onTap: () {
-            context.go('/my-bookings');
+            context.push('/my-bookings');
           },
           icon: Icons.calendar_month_rounded,
           title: 'আমার বুকিং',
@@ -676,7 +676,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
               ),
               TextButton(
-                onPressed: () => context.go('/services'),
+                onPressed: () => context.push('/services'),
                 style: TextButton.styleFrom(
                   foregroundColor: const Color(0xFF2196F3),
                 ),
@@ -715,7 +715,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   elevation: 4,
                   shadowColor: Colors.black.withOpacity(0.1),
                   child: InkWell(
-                    onTap: () => context.go('/services/${category.id}'),
+                    onTap: () => context.push('/services/${category.id}'),
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
                       decoration: BoxDecoration(
@@ -822,7 +822,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: () => context.go('/services/${category.id}'),
+                    onTap: () => context.push('/services/${category.id}'),
                     borderRadius: BorderRadius.circular(20),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -901,7 +901,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ],
       ),
       child: FloatingActionButton.extended(
-        onPressed: () => context.go('/providers'),
+        onPressed: () => context.push('/providers'),
         backgroundColor: const Color(0xFF2196F3),
         foregroundColor: Colors.white,
         elevation: 6,
@@ -971,7 +971,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               case 0:
                 break;
               case 1:
-                context.go('/services');
+                context.push('/services');
                 break;
               case 2:
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -984,7 +984,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 );
                 break;
               case 3:
-                context.go('/profile-view');
+                context.push('/profile-view');
                 break;
             }
           },

@@ -789,7 +789,7 @@ class _ProfileViewPageState extends State<ProfileViewPage>
         icon: Icons.dashboard_rounded,
         title: 'প্রোভাইডার ড্যাশবোর্ড',
         subtitle: 'আপনার সেবা ব্যবস্থাপনা',
-        onTap: () => context.go('/provider-dashboard'),
+        onTap: () => context.push('/provider-dashboard'),
         color: Colors.green,
         badge: '৫ নতুন',
       ),
@@ -797,7 +797,7 @@ class _ProfileViewPageState extends State<ProfileViewPage>
         icon: Icons.request_quote_rounded,
         title: 'সেবা রিকোয়েস্ট',
         subtitle: 'নতুন রিকোয়েস্ট দেখুন',
-        onTap: () => context.go('/incoming-requests'),
+        onTap: () => context.push('/incoming-requests'),
         color: Colors.orange,
         badge: '৩ অপেক্ষমান',
       ),
@@ -1241,7 +1241,7 @@ class _ProfileViewPageState extends State<ProfileViewPage>
     if (Navigator.of(context).canPop()) {
       context.pop();
     } else {
-      context.go('/');
+      context.push('/');
     }
   }
 

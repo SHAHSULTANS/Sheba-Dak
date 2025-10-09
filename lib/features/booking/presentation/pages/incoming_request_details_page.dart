@@ -24,7 +24,7 @@ class IncomingRequestDetailsPage extends StatelessWidget {
         title: const Text('ইনকামিং রিকোয়েস্ট'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios),
-          onPressed: () => context.go('/provider-dashboard'),
+          onPressed: () => context.push('/provider-dashboard'),
         ),
       ),
       body: FutureBuilder<List<BookingEntity>>(
@@ -90,7 +90,7 @@ class IncomingRequestDetailsPage extends StatelessWidget {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('বুকিং গ্রহণ করা হয়েছে')),
                             );
-                            context.go('/provider-dashboard');
+                            context.push('/provider-dashboard');
                           } else {
                             throw Exception(result['message']);
                           }
@@ -121,7 +121,7 @@ class IncomingRequestDetailsPage extends StatelessWidget {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('বুকিং প্রত্যাখ্যান করা হয়েছে')),
                             );
-                            context.go('/provider-dashboard');
+                            context.push('/provider-dashboard');
                           } else {
                             throw Exception(result['message']);
                           }

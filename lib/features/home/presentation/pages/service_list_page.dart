@@ -267,7 +267,7 @@ class _ServiceListPageState extends State<ServiceListPage> with TickerProviderSt
                 if (context.canPop()) {
                   context.pop();
                 } else {
-                  context.go('/');
+                  context.push('/');
                 }
               },
             ),
@@ -609,7 +609,7 @@ class _ServiceListPageState extends State<ServiceListPage> with TickerProviderSt
             color: Colors.transparent,
             child: InkWell(
               borderRadius: BorderRadius.circular(20),
-              onTap: () => context.go('/service-detail/${service.id}'),
+              onTap: () => context.push('/service-detail/${service.id}'),
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -814,7 +814,7 @@ class _ServiceListPageState extends State<ServiceListPage> with TickerProviderSt
                               child: Material(
                                 color: Colors.transparent,
                                 child: InkWell(
-                                  onTap: () => context.go('/service-detail/${service.id}'),
+                                  onTap: () => context.push('/service-detail/${service.id}'),
                                   borderRadius: BorderRadius.circular(12),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,

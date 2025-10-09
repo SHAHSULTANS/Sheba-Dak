@@ -395,7 +395,7 @@ class ServiceDetailPage extends StatelessWidget {
                 ),
               ),
               IconButton(
-                onPressed: () => context.go('/provider-detail/${provider.id}'),
+                onPressed: () => context.push('/provider-detail/${provider.id}'),
                 icon: Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 16,
@@ -523,7 +523,7 @@ class ServiceDetailPage extends StatelessWidget {
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
-                    onPressed: () => context.go(
+                    onPressed: () => context.push(
                       '/booking/$providerId/$serviceCategory/$price',
                     ),
                     style: ElevatedButton.styleFrom(

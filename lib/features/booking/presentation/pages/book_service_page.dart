@@ -681,9 +681,9 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
       );
       
       if (booking.status == BookingStatus.pending) {
-        context.go('/my-bookings');
+        context.push('/my-bookings');
       } else {
-        context.go('/payment/$bookingId');
+        context.push('/payment/$bookingId');
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -692,7 +692,7 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
           backgroundColor: Colors.orange,
         ),
       );
-      context.go('/my-bookings');
+      context.push('/my-bookings');
     }
   }
 

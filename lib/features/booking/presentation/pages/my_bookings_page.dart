@@ -288,7 +288,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: () => context.go('/services'),
+              onPressed: () => context.push('/services'),
               icon: const Icon(Icons.search, size: 20),
               label: const Text('সেবা খুঁজুন'),
               style: ElevatedButton.styleFrom(
@@ -655,7 +655,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
   }
 
   void _openChat(BookingEntity booking) {
-    context.go('/chat/${booking.id}/${booking.customerId}/${booking.providerId}');
+    context.push('/chat/${booking.id}/${booking.customerId}/${booking.providerId}');
   }
 
   void _initiatePayment(String bookingId) {
@@ -663,7 +663,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> with SingleTickerProvid
   }
 
   void _submitReview(BookingEntity booking) {
-    context.go('/review/${booking.id}');
+    context.push('/review/${booking.id}');
   }
 
   void _showCancelConfirmation(BookingEntity booking) {

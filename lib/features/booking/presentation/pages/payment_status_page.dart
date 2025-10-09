@@ -32,7 +32,7 @@ class PaymentStatusPage extends StatelessWidget {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => context.go('/provider-dashboard'),
+          onPressed: () => context.push('/provider-dashboard'),
         ),
       ),
       body: FutureBuilder<List<BookingEntity>>(
@@ -92,7 +92,7 @@ class PaymentStatusPage extends StatelessWidget {
                 OutlinedButton.icon(
                   icon: const Icon(Icons.chat, size: 16),
                   label: const Text('গ্রাহকের সাথে চ্যাট করুন'),
-                  onPressed: () => context.go('/chat/${booking.id}/${booking.customerId}/${booking.providerId}'),
+                  onPressed: () => context.push('/chat/${booking.id}/${booking.customerId}/${booking.providerId}'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.blue,
                     side: const BorderSide(color: Colors.blue),

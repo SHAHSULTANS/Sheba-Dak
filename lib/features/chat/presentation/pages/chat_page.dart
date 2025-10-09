@@ -800,7 +800,7 @@ class _ChatPageState extends State<ChatPage> with SingleTickerProviderStateMixin
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: () => context.go('/my-bookings'),
+            onPressed: () => context.push('/my-bookings'),
             child: const Text('Back to Bookings'),
           ),
         ],
