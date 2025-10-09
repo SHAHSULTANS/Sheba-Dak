@@ -123,26 +123,116 @@ class _ProviderRegistrationPageState extends State<ProviderRegistrationPage>
     }
   }
 
-  void _submitApplication(BuildContext context, String userId) {
-    if (_formKey.currentState!.validate() && selectedServiceId != null && documents.isNotEmpty) {
-      HapticFeedback.mediumImpact();
-      final application = ProviderApplication(
-        userId: userId,
-        name: nameController.text.trim(),
-        description: descriptionController.text.trim(),
-        services: [selectedServiceId!],
-        documents: documents,
-      );
-      context.read<AuthBloc>().add(SubmitProviderApplicationEvent(application));
-    } else {
+    void _submitApplication(BuildContext context) {
+  try {
+    print('🚀 _submitApplication started');
+    
+    final authBloc = context.read<AuthBloc>();
+    final authState = authBloc.state;
+    
+    print('🔍 Current auth state: ${authState.runtimeType}');
+    
+    if (authState is! Authenticated) {
       _showPremiumSnackBar(
-        '❌ দয়া করে সকল প্রয়োজনীয় তথ্য পূরণ করুন',
+        '❌ ব্যবহারকারী লগইন অবস্থায় নেই। দয়া করে পুনরায় লগইন করুন।',
+        Colors.red.shade600,
+        Icons.error_rounded,
+      );
+      context.go('/login');
+      return;
+    }
+
+    final user = authState.user;
+    print('👤 User: ${user.id}, ${user.name}, ${user.role}');
+    
+    // Use manual validation instead of form validation
+    final validationErrors = _validateAllFields();
+    
+    if (validationErrors.isNotEmpty) {
+      String errorMessage = '❌ দয়া করে সকল তথ্য সঠিকভাবে পূরণ করুন';
+      for (final error in validationErrors) {
+        errorMessage += '\n• $error';
+      }
+      
+      _showPremiumSnackBar(
+        errorMessage,
         Colors.orange.shade600,
         Icons.warning_rounded,
       );
+      return;
     }
-  }
 
+    if (documents.isEmpty) {
+      _showPremiumSnackBar(
+        '❌ দয়া করে অন্তত একটি ডকুমেন্ট আপলোড করুন',
+        Colors.orange.shade600,
+        Icons.warning_rounded,
+      );
+      return;
+    }
+
+    // All validations passed - submit application
+    HapticFeedback.mediumImpact();
+    
+    final application = ProviderApplication(
+      userId: user.id,
+      name: nameController.text.trim(),
+      description: descriptionController.text.trim(),
+      services: [selectedServiceId!],
+      documents: documents,
+    );
+    
+    print('🔄 Submitting provider application for user: ${user.id}');
+    print('📄 Application details: ${application.toJson()}');
+    
+    authBloc.add(SubmitProviderApplicationEvent(application));
+    
+    _showPremiumSnackBar(
+      '✅ আবেদন সফলভাবে জমা হয়েছে!',
+      Colors.green.shade600,
+      Icons.check_circle_rounded,
+    );
+
+    _showPremiumSuccessDialog();
+
+  } catch (e, stackTrace) {
+    print('❌ Error in _submitApplication: $e');
+    print('📋 Stack trace: $stackTrace');
+    
+    _showPremiumSnackBar(
+      '❌ আবেদন জমা দিতে সমস্যা হয়েছে: $e',
+      Colors.red.shade600,
+      Icons.error_rounded,
+    );
+  }
+}
+
+// Comprehensive manual validation
+List<String> _validateAllFields() {
+  final errors = <String>[];
+  
+  // Validate name
+  if (nameController.text.trim().isEmpty) {
+    errors.add('নাম প্রয়োজন');
+  } else if (nameController.text.trim().length < 2) {
+    errors.add('নাম কমপক্ষে ২ অক্ষরের হতে হবে');
+  }
+  
+  // Validate description
+  if (descriptionController.text.trim().isEmpty) {
+    errors.add('বিবরণ প্রয়োজন');
+  } else if (descriptionController.text.trim().length < 10) {
+    errors.add('বিবরণ কমপক্ষে ১০ অক্ষরের হতে হবে');
+  }
+  
+  // Validate service selection
+  if (selectedServiceId == null || selectedServiceId!.isEmpty) {
+    errors.add('একটি সেবা ক্যাটাগরি নির্বাচন করুন');
+  }
+  
+  return errors;
+}
+  
   void _showPremiumSnackBar(String message, Color color, IconData icon) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -173,6 +263,7 @@ class _ProviderRegistrationPageState extends State<ProviderRegistrationPage>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         elevation: 8,
         margin: const EdgeInsets.all(20),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -191,8 +282,17 @@ class _ProviderRegistrationPageState extends State<ProviderRegistrationPage>
         backgroundColor: const Color(0xFFF8FAFC),
         body: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
-            if (state is Authenticated) {
-              _showPremiumSuccessDialog();
+            print('🔄 AuthBloc state changed in listener: ${state.runtimeType}');
+            
+            if (state is Authenticated && state.user.role == Role.provider) {
+              _showPremiumSnackBar(
+                '✅ আপনি এখন একজন প্রোভাইডার! ড্যাশবোর্ডে রিডাইরেক্ট করা হচ্ছে...',
+                Colors.green.shade600,
+                Icons.check_circle_rounded,
+              );
+              Future.delayed(const Duration(seconds: 2), () {
+                context.go('/provider-dashboard');
+              });
             } else if (state is AuthError) {
               _showPremiumSnackBar(
                 '❌ ত্রুটি: ${state.message}',
@@ -202,10 +302,22 @@ class _ProviderRegistrationPageState extends State<ProviderRegistrationPage>
             }
           },
           builder: (context, state) {
-            if (state is Authenticated && state.user.role == Role.customer) {
-              return _buildPremiumStepper(context, state.user, theme, size);
+            print('🎨 Building with auth state: ${state.runtimeType}');
+            
+            if (state is Authenticated) {
+              if (state.user.role == Role.customer) {
+                return _buildPremiumStepper(context, state.user, theme, size);
+              } else if (state.user.role == Role.provider) {
+                return _buildAlreadyProviderView(theme);
+              }
+            } else if (state is Unauthenticated) {
+              return _buildUnauthorizedView(theme);
             }
-            return _buildUnauthorizedView(theme);
+            
+            // Show loading while checking auth state
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
           },
         ),
       ),
@@ -399,7 +511,7 @@ class _ProviderRegistrationPageState extends State<ProviderRegistrationPage>
               children: [
                 _buildProgressIndicator(theme),
                 const SizedBox(height: 32),
-                _buildPremiumStepperContent(context, user, theme),
+                _buildPremiumStepperContent(context, theme),
               ],
             ),
           ),
@@ -547,7 +659,7 @@ class _ProviderRegistrationPageState extends State<ProviderRegistrationPage>
     );
   }
 
-  Widget _buildPremiumStepperContent(BuildContext context, UserEntity user, ThemeData theme) {
+  Widget _buildPremiumStepperContent(BuildContext context, ThemeData theme) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -628,7 +740,7 @@ class _ProviderRegistrationPageState extends State<ProviderRegistrationPage>
                             setState(() => _currentStep++);
                             _progressController.forward(from: 0);
                           } else if (_currentStep == 2) {
-                            _submitApplication(context, user.id);
+                            _submitApplication(context);
                           } else {
                             _showPremiumSnackBar(
                               _currentStep == 1
@@ -1305,6 +1417,78 @@ class _ProviderRegistrationPageState extends State<ProviderRegistrationPage>
                   child: Center(
                     child: Text(
                       'হোম পেজে ফিরে যান',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAlreadyProviderView(ThemeData theme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.verified_rounded,
+                size: 48,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'ইতিমধ্যে প্রোভাইডার!',
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: Colors.grey.shade800,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'আপনি ইতিমধ্যে একজন সেবা প্রদানকারী হিসেবে নিবন্ধিত।',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: Colors.grey.shade600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            Container(
+              width: double.infinity,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF2196F3), Color(0xFF9C27B0)],
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => context.go('/provider-dashboard'),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Center(
+                    child: Text(
+                      'ড্যাশবোর্ডে যান',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 16,

@@ -185,27 +185,37 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     });
 
     /// Provider Application
-    on<SubmitProviderApplicationEvent>((event, emit) async {
-      final currentState = state;
+  // In your auth_bloc.dart - Update the SubmitProviderApplicationEvent handler
+  on<SubmitProviderApplicationEvent>((event, emit) async {
+    final currentState = state;
 
-      if (currentState is! Authenticated) {
-        emit(AuthError('অ্যাপ্লিকেশন সাবমিট করতে লগইন প্রয়োজন।'));
-        return;
-      }
+    if (currentState is! Authenticated) {
+      emit(AuthError('অ্যাপ্লিকেশন সাবমিট করতে লগইন প্রয়োজন।'));
+      return;
+    }
 
-      emit(AuthLoading());
-      try {
-        final response = await ApiClient.submitProviderApplication(event.application);
+    emit(AuthLoading());
+    try {
+      // Convert customer to provider
+      final updatedUser = currentState.user.copyWith(
+        // 'role': Role.provider,
+        updatedAt: DateTime.now(),
+      );
 
-        if (response['success']) {
-          emit(Authenticated(currentState.user));
-        } else {
-          emit(AuthError(response['message'] ?? 'অ্যাপ্লিকেশন ব্যর্থ হয়েছে'));
-        }
-      } catch (e) {
-        emit(AuthError('অ্যাপ্লিকেশন ত্রুটি: $e'));
-      }
-    });
+      // Save to SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user', jsonEncode(updatedUser.toJson()));
+
+      // Emit the updated user with provider role
+      emit(Authenticated(updatedUser));
+      
+      print('✅ PROVIDER APPLICATION: User ${updatedUser.id} is now a provider');
+
+    } catch (e) {
+      print('❌ PROVIDER APPLICATION ERROR: $e');
+      emit(AuthError('অ্যাপ্লিকেশন জমা দিতে সমস্যা হয়েছে: $e'));
+    }
+  });
 
     // Load saved user - FIXED VERSION
     _loadSavedUser();

@@ -19,12 +19,20 @@ class _ServiceListPageState extends State<ServiceListPage> with TickerProviderSt
   final TextEditingController _searchController = TextEditingController();
   String _sortBy = 'name'; // 'name', 'price'
   bool _showFilters = false;
+  
+  // Premium Animation Controllers
   late AnimationController _filterAnimationController;
+  late AnimationController _fadeAnimationController;
+  late AnimationController _slideAnimationController;
   late Animation<double> _filterAnimation;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
     super.initState();
+    
+    // Initialize category data
     categoryName = DummyData.getServiceCategories()
         .firstWhere(
           (cat) => cat.id == widget.categoryId,
@@ -39,24 +47,54 @@ class _ServiceListPageState extends State<ServiceListPage> with TickerProviderSt
     services = DummyData.getServices(widget.categoryId);
     filteredServices = List.from(services);
 
+    // Initialize animations
     _filterAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 400),
       vsync: this,
     );
 
-    _filterAnimation = Tween<double>(
+    _fadeAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _slideAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    _filterAnimation = CurvedAnimation(
+      parent: _filterAnimationController,
+      curve: Curves.fastEaseInToSlowEaseOut,
+    );
+
+    _fadeAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
     ).animate(CurvedAnimation(
-      parent: _filterAnimationController,
-      curve: Curves.easeInOut,
+      parent: _fadeAnimationController,
+      curve: Curves.easeOutCubic,
     ));
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideAnimationController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    // Start animations
+    _fadeAnimationController.forward();
+    _slideAnimationController.forward();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _filterAnimationController.dispose();
+    _fadeAnimationController.dispose();
+    _slideAnimationController.dispose();
     super.dispose();
   }
 
@@ -102,126 +140,262 @@ class _ServiceListPageState extends State<ServiceListPage> with TickerProviderSt
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final size = MediaQuery.of(context).size;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
         slivers: [
-          // AppBar with gradient
+          // Premium Gradient AppBar
           SliverAppBar(
-            expandedHeight: 120,
+            expandedHeight: size.height * 0.2,
             floating: false,
             pinned: true,
-            flexibleSpace: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    theme.primaryColor,
-                    theme.primaryColor.withOpacity(0.8),
+            elevation: 0,
+            backgroundColor: Colors.transparent,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFF2196F3),
+                      const Color(0xFF1976D2),
+                      const Color(0xFF0D47A1),
+                    ],
+                    stops: const [0.1, 0.5, 0.9],
+                  ),
+                ),
+                child: Stack(
+                  children: [
+                    // Background decoration
+                    Positioned(
+                      right: -size.width * 0.1,
+                      top: -size.height * 0.05,
+                      child: Container(
+                        width: size.width * 0.4,
+                        height: size.width * 0.4,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              Colors.white.withOpacity(0.15),
+                              Colors.white.withOpacity(0.05),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Content
+                    SafeArea(
+                      bottom: false,
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SlideTransition(
+                              position: _slideAnimation,
+                              child: FadeTransition(
+                                opacity: _fadeAnimation,
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: Icon(
+                                        _getCategoryIcon(widget.categoryId),
+                                        color: Colors.white,
+                                        size: 28,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            categoryName,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 28,
+                                              fontWeight: FontWeight.bold,
+                                              letterSpacing: -0.5,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${services.length}টি সেবা উপলব্ধ',
+                                            style: TextStyle(
+                                              color: Colors.white.withOpacity(0.9),
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              child: FlexibleSpaceBar(
-                title: Text(
-                  categoryName,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                centerTitle: true,
-              ),
             ),
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              icon: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 20),
+              ),
               onPressed: () {
-                    if (GoRouter.of(context).canPop()) {
-                      GoRouter.of(context).pop();
-                    } else {
-                      context.go('/'); // fallback route
-                    }
-              }
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/');
+                }
+              },
             ),
             actions: [
-              IconButton(
-                icon: Icon(
-                  _showFilters ? Icons.filter_list : Icons.filter_list_outlined,
-                  color: Colors.white,
+              Container(
+                margin: const EdgeInsets.only(right: 8),
+                child: IconButton(
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      _showFilters ? Icons.filter_alt_rounded : Icons.filter_alt_outlined,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                  onPressed: _toggleFilters,
                 ),
-                onPressed: _toggleFilters,
               ),
             ],
           ),
 
           // Search Bar
           SliverToBoxAdapter(
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(25),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 25,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                      border: Border.all(color: Colors.grey.shade200),
                     ),
-                  ],
-                ),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: _filterServices,
-                  decoration: InputDecoration(
-                    hintText: 'সেবা বা প্রোভাইডার খুঁজুন...',
-                    prefixIcon: Icon(Icons.search, color: Colors.grey.shade600),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: () {
-                              _searchController.clear();
-                              _filterServices('');
-                            },
-                          )
-                        : null,
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: _filterServices,
+                      decoration: InputDecoration(
+                        hintText: 'সেবা বা প্রোভাইডার খুঁজুন...',
+                        prefixIcon: Container(
+                          padding: const EdgeInsets.only(left: 20, right: 12),
+                          child: Icon(Icons.search_rounded, color: Colors.grey.shade600, size: 24),
+                        ),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(Icons.clear_rounded, color: Colors.grey.shade600),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _filterServices('');
+                                },
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 18),
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
 
-          // Filter Panel
+          // Premium Filter Panel
           SliverToBoxAdapter(
             child: AnimatedBuilder(
               animation: _filterAnimation,
               builder: (context, child) {
                 return Container(
-                  height: _filterAnimation.value * 60,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  height: _filterAnimation.value * 80,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Opacity(
                     opacity: _filterAnimation.value,
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.sort, color: Colors.grey),
-                            const SizedBox(width: 8),
-                            const Text('সাজান:', style: TextStyle(fontWeight: FontWeight.w500)),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  _buildSortChip('name', 'নাম'),
-                                  const SizedBox(width: 8),
-                                  _buildSortChip('price', 'দাম'),
-                                ],
-                              ),
+                    child: Transform.translate(
+                      offset: Offset(0, 10 * (1 - _filterAnimation.value)),
+                      child: Card(
+                        elevation: 8,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFFF8FAFC),
+                                Colors.white,
+                              ],
                             ),
-                          ],
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF2196F3).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Icons.sort_rounded, color: Color(0xFF2196F3), size: 20),
+                                ),
+                                const SizedBox(width: 12),
+                                const Text('সাজান:', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1A1A1A))),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Wrap(
+                                    spacing: 8,
+                                    children: [
+                                      _buildPremiumSortChip('name', 'নাম অনুসারে'),
+                                      _buildPremiumSortChip('price', 'দাম অনুসারে'),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -233,47 +407,130 @@ class _ServiceListPageState extends State<ServiceListPage> with TickerProviderSt
 
           // Services Count
           SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text(
-                '${filteredServices.length}টি সেবা পাওয়া গেছে',
-                style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2196F3).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${filteredServices.length}টি সেবা',
+                          style: const TextStyle(
+                            color: Color(0xFF2196F3),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (filteredServices.isNotEmpty)
+                        Text(
+                          _getSortingText(),
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
 
-          // Services List
+          // Services List or Empty State
           filteredServices.isEmpty
               ? SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 300,
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.search_off, size: 64, color: Colors.grey.shade400),
-                          const SizedBox(height: 16),
-                          Text(
-                            'কোনো সেবা পাওয়া যায়নি',
-                            style: TextStyle(fontSize: 18, color: Colors.grey.shade600, fontWeight: FontWeight.w500),
+                  child: SlideTransition(
+                    position: _slideAnimation,
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: SizedBox(
+                        height: 400,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 120,
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade100,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(Icons.search_off_rounded, size: 48, color: Colors.grey.shade400),
+                              ),
+                              const SizedBox(height: 24),
+                              Text(
+                                'কোনো সেবা পাওয়া যায়নি',
+                                style: TextStyle(fontSize: 18, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(height: 8),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 40),
+                                child: Text(
+                                  'অন্য কীওয়ার্ড দিয়ে খোঁজ করে দেখুন অথবা ফিল্টার পরিবর্তন করুন',
+                                  style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              Container(
+                                width: 200,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: () {
+                                      _searchController.clear();
+                                      _filterServices('');
+                                    },
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Center(
+                                      child: Text(
+                                        'সব সেবা দেখুন',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'অন্য কীওয়ার্ড দিয়ে খোঁজ করে দেখুন',
-                            style: TextStyle(color: Colors.grey.shade500),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 )
               : SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.all(20),
                   sliver: SliverList.builder(
                     itemCount: filteredServices.length,
                     itemBuilder: (context, index) {
                       final service = filteredServices[index];
-                      return _buildServiceCard(service, context);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _buildPremiumServiceCard(service, context, index),
+                      );
                     },
                   ),
                 ),
@@ -282,15 +539,30 @@ class _ServiceListPageState extends State<ServiceListPage> with TickerProviderSt
     );
   }
 
-  Widget _buildSortChip(String value, String label) {
+  Widget _buildPremiumSortChip(String value, String label) {
     final isSelected = _sortBy == value;
     return GestureDetector(
       onTap: () => _sortServices(value),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? Theme.of(context).primaryColor : Colors.grey.shade200,
+          gradient: isSelected 
+              ? const LinearGradient(
+                  colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
+                )
+              : null,
+          color: isSelected ? null : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(20),
+          boxShadow: isSelected 
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF2196F3).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           label,
@@ -304,154 +576,271 @@ class _ServiceListPageState extends State<ServiceListPage> with TickerProviderSt
     );
   }
 
-  Widget _buildServiceCard(dynamic service, BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Card(
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: Colors.grey.shade200, width: 1),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => context.go('/service-detail/${service.id}'),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Service Header
-                Row(
+  Widget _buildPremiumServiceCard(dynamic service, BuildContext context, int index) {
+    return SlideTransition(
+      position: Tween<Offset>(
+        begin: const Offset(0, 0.2),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(
+        parent: _slideAnimationController,
+        curve: Interval(0.1 + (index * 0.1), 1.0, curve: Curves.easeOutCubic),
+      )),
+      child: FadeTransition(
+        opacity: Tween<double>(
+          begin: 0.0,
+          end: 1.0,
+        ).animate(CurvedAnimation(
+          parent: _fadeAnimationController,
+          curve: Interval(0.1 + (index * 0.1), 1.0, curve: Curves.easeOutCubic),
+        )),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 25,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => context.go('/service-detail/${service.id}'),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Service Icon/Image
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Theme.of(context).primaryColor.withOpacity(0.1),
-                            Theme.of(context).primaryColor.withOpacity(0.2),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        _getServiceIcon(service.categoryId),
-                        color: Theme.of(context).primaryColor,
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-
-                    // Service Info
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            service.name,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    // Service Header
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Service Icon
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF2196F3).withOpacity(0.1),
+                                const Color(0xFF9C27B0).withOpacity(0.1),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          const SizedBox(height: 4),
-                          Row(
+                          child: Icon(
+                            _getServiceIcon(service.categoryId),
+                            color: const Color(0xFF2196F3),
+                            size: 28,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+
+                        // Service Info
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.person_outline, size: 16, color: Colors.grey.shade600),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  service.providerName,
-                                  style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
-                                  overflow: TextOverflow.ellipsis,
+                              Text(
+                                service.name,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1A1A1A),
                                 ),
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  Icon(Icons.person_outline, size: 16, color: Colors.grey.shade600),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      service.providerName,
+                                      style: TextStyle(
+                                        color: Colors.grey.shade700, 
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(Icons.star_rounded, size: 16, color: Colors.amber.shade600),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '4.5',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade700,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '•',
+                                    style: TextStyle(color: Colors.grey.shade400),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Icon(Icons.location_on_outlined, size: 14, color: Colors.grey.shade600),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'ঢাকা',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-
-                    // Bookmark
-                    IconButton(
-                      icon: const Icon(Icons.bookmark_border),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('বুকমার্ক করা হয়েছে'), duration: Duration(seconds: 2)),
-                        );
-                      },
-                      iconSize: 20,
-                      color: Colors.grey.shade600,
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                // Service Description
-                if (service.description != null && service.description.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: Text(
-                      service.description,
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 13, height: 1.3),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-
-                // Bottom Row - Price and Actions
-                Row(
-                  children: [
-                    const Spacer(),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '৳${service.price.toStringAsFixed(0)}',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
                         ),
-                        Text(
-                          'থেকে শুরু',
-                          style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+
+                        // Bookmark Button
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.bookmark_border_rounded, size: 18),
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('সেবাটি বুকমার্ক করা হয়েছে'),
+                                  backgroundColor: const Color(0xFF4CAF50),
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                            color: Colors.grey.shade600,
+                            padding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Service Description
+                    if (service.description != null && service.description.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Text(
+                          service.description,
+                          style: TextStyle(
+                            color: Colors.grey.shade600, 
+                            fontSize: 14, 
+                            height: 1.4,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+
+                    // Bottom Section
+                    Row(
+                      children: [
+                        // Price
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '৳${service.price.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF2196F3),
+                              ),
+                            ),
+                            Text(
+                              'থেকে শুরু',
+                              style: TextStyle(
+                                fontSize: 12, 
+                                color: Colors.grey.shade500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+
+                        // Action Buttons
+                        Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.green.shade200),
+                              ),
+                              child: IconButton(
+                                onPressed: () {},
+                                icon: Icon(Icons.phone_rounded, size: 20, color: Colors.green.shade600),
+                                padding: EdgeInsets.zero,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Container(
+                              width: 120,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF2196F3), Color(0xFF1976D2)],
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF2196F3).withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () => context.go('/service-detail/${service.id}'),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: const [
+                                      Icon(Icons.visibility_rounded, color: Colors.white, size: 18),
+                                      SizedBox(width: 6),
+                                      Text(
+                                        'বিস্তারিত',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 12),
-
-                // Action Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {},
-                        icon: const Icon(Icons.phone, size: 16),
-                        label: const Text('কল করুন'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => context.go('/service-detail/${service.id}'),
-                        icon: const Icon(Icons.info_outline, size: 16),
-                        label: const Text('বিস্তারিত'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -462,19 +851,49 @@ class _ServiceListPageState extends State<ServiceListPage> with TickerProviderSt
   IconData _getServiceIcon(String? categoryId) {
     switch (categoryId) {
       case 'plumbing':
-        return Icons.plumbing;
+        return Icons.plumbing_rounded;
       case 'electrical':
-        return Icons.electrical_services;
+        return Icons.electrical_services_rounded;
       case 'cleaning':
-        return Icons.cleaning_services;
+        return Icons.cleaning_services_rounded;
       case 'carpentry':
-        return Icons.handyman;
+        return Icons.handyman_rounded;
       case 'painting':
-        return Icons.format_paint;
+        return Icons.format_paint_rounded;
       case 'appliance':
-        return Icons.home_repair_service;
+        return Icons.home_repair_service_rounded;
       default:
-        return Icons.build;
+        return Icons.build_rounded;
+    }
+  }
+
+  IconData _getCategoryIcon(String categoryId) {
+    switch (categoryId) {
+      case 'plumbing':
+        return Icons.plumbing_rounded;
+      case 'electrical':
+        return Icons.electrical_services_rounded;
+      case 'cleaning':
+        return Icons.cleaning_services_rounded;
+      case 'carpentry':
+        return Icons.handyman_rounded;
+      case 'painting':
+        return Icons.format_paint_rounded;
+      case 'appliance':
+        return Icons.home_repair_service_rounded;
+      default:
+        return Icons.category_rounded;
+    }
+  }
+
+  String _getSortingText() {
+    switch (_sortBy) {
+      case 'name':
+        return 'নাম অনুসারে সাজানো';
+      case 'price':
+        return 'দাম অনুসারে সাজানো';
+      default:
+        return '';
     }
   }
 }
