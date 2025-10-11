@@ -1,3 +1,5 @@
+// 📁 lib/features/booking/domain/entities/booking_entity.dart
+
 enum BookingStatus {
   pending,
   paymentPending, // Added for payment initiation
@@ -18,6 +20,9 @@ class BookingEntity {
   final double price;
   final String? description;
 
+  // ✅ Newly added field
+  final String? location;
+
   const BookingEntity({
     required this.id,
     required this.customerId,
@@ -27,6 +32,7 @@ class BookingEntity {
     required this.status,
     required this.price,
     this.description,
+    this.location,
   });
 
   factory BookingEntity.fromJson(Map<String, dynamic> json) {
@@ -42,6 +48,7 @@ class BookingEntity {
       ),
       price: (json['price'] as num).toDouble(),
       description: json['description'] as String?,
+      location: json['location'] as String?, // ✅ Added
     );
   }
 
@@ -54,6 +61,7 @@ class BookingEntity {
         'status': status.toString().split('.').last,
         'price': price,
         'description': description,
+        'location': location, // ✅ Added
       };
 
   BookingEntity copyWith({
@@ -65,6 +73,7 @@ class BookingEntity {
     BookingStatus? status,
     double? price,
     String? description,
+    String? location, // ✅ Added
   }) {
     return BookingEntity(
       id: id ?? this.id,
@@ -75,6 +84,7 @@ class BookingEntity {
       status: status ?? this.status,
       price: price ?? this.price,
       description: description ?? this.description,
+      location: location ?? this.location, // ✅ Added
     );
   }
 }

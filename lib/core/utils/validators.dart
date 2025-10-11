@@ -22,4 +22,15 @@ class Validators {
     }
     return null;
   }
+
+
+  static String? validateAddress(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'ঠিকানা প্রয়োজন';
+    }
+    if (value.length < 10) {
+      return 'ঠিকানা কমপক্ষে ১০ অক্ষরের হতে হবে';
+    }
+    return null;
+  }
 }

@@ -6,6 +6,9 @@ import 'package:smartsheba/core/utils/dummy_data.dart';
 import 'package:smartsheba/features/booking/presentation/bloc/booking_bloc.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/bloc/auth_bloc.dart';
+import 'core/location/data/datasources/location_datasource.dart';
+import 'core/location/data/repositories/location_repository_impl.dart';
+import 'core/location/presentation/bloc/location_bloc.dart';
 import 'routes.dart';
 
 void main() async {
@@ -15,10 +18,14 @@ void main() async {
 
   runApp(
     MultiBlocProvider(
-       providers: [
+      providers: [
         BlocProvider(create: (_) => AuthBloc()),
-        BlocProvider(create: (_) => BookingBloc()), // <-- add here
-        // other blocs...
+        BlocProvider(create: (_) => BookingBloc()),
+        BlocProvider(
+          create: (_) => LocationBloc(
+            locationRepository: LocationRepositoryImpl(LocationDataSourceImpl()),
+          ),
+        ),
       ],
       child: MyApp(prefs: prefs),
     ),

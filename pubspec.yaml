@@ -23,7 +23,11 @@ dependencies:
   intl: ^0.18.1
   lottie: ^2.7.0 
   flutter_rating_bar: ^4.0.1
-
+  geolocator: ^11.0.1  # Permissions and position (battery-optimized).
+  geocoding: ^2.1.1  # Address search/reverse.
+  google_maps_flutter: ^2.5.0  # Static map embed.
+  dartz: ^0.10.1
+  get_it: ^7.6.4
 dev_dependencies:
   flutter_test:
     sdk: flutter

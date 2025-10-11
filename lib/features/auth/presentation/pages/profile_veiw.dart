@@ -1,4 +1,3 @@
-// profile_view_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -61,7 +60,7 @@ class _ProfileViewPageState extends State<ProfileViewPage>
     
     _backgroundColorAnimation = ColorTween(
       begin: Colors.transparent,
-      end: Colors.white.withOpacity(0.95),
+      end: Colors.white,
     ).animate(CurvedAnimation(
       parent: _animationController,
       curve: Curves.easeOutCubic,
@@ -132,7 +131,7 @@ class _ProfileViewPageState extends State<ProfileViewPage>
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                theme.primaryColor.withOpacity(0.05),
+                Colors.white,
                 Colors.grey.shade50,
               ],
             ),
@@ -174,12 +173,12 @@ class _ProfileViewPageState extends State<ProfileViewPage>
         icon: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(_isScrolled ? 0.9 : 0.2),
+            color: Colors.white,
             shape: BoxShape.circle,
           ),
           child: Icon(
             Icons.arrow_back_ios_rounded,
-            color: _isScrolled ? theme.primaryColor : Colors.white,
+            color: theme.primaryColor,
             size: 20,
           ),
         ),
@@ -214,12 +213,12 @@ class _ProfileViewPageState extends State<ProfileViewPage>
               icon: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(_isScrolled ? 0.9 : 0.2),
+                  color: Colors.white,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.notifications_outlined,
-                  color: _isScrolled ? theme.primaryColor : Colors.white,
+                  color: theme.primaryColor,
                   size: 22,
                 ),
               ),
@@ -295,12 +294,12 @@ class _ProfileViewPageState extends State<ProfileViewPage>
             margin: const EdgeInsets.only(right: 8),
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(_isScrolled ? 0.9 : 0.2),
+              color: Colors.white,
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.more_vert_rounded,
-              color: _isScrolled ? theme.primaryColor : Colors.white,
+              color: theme.primaryColor,
               size: 22,
             ),
           ),
@@ -934,7 +933,7 @@ class _ProfileViewPageState extends State<ProfileViewPage>
                 title,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Colors.grey.shade800,
+                  color: Colors.black87,
                 ),
               ),
             ],

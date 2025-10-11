@@ -8,6 +8,8 @@ import 'package:smartsheba/core/theme/app_theme.dart';
 import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
 import 'package:smartsheba/features/booking/domain/entities/booking_entity.dart';
 import 'package:smartsheba/core/network/api_client.dart';
+import 'package:smartsheba/core/location/presentation/pages/address_input_page.dart';
+import 'package:smartsheba/core/location/domain/entities/address_entity.dart';
 
 class BookServicePage extends StatefulWidget {
   final String providerId;
@@ -28,6 +30,7 @@ class BookServicePage extends StatefulWidget {
 class _BookServicePageState extends State<BookServicePage> with SingleTickerProviderStateMixin {
   DateTime? selectedDate;
   TimeOfDay? selectedTime;
+  String? location;
   final TextEditingController _descriptionController = TextEditingController();
   final FocusNode _descriptionFocusNode = FocusNode();
   
@@ -36,7 +39,7 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
   late Animation<double> _buttonScaleAnimation;
   
   // Form validation
-  bool get _isFormValid => selectedDate != null && selectedTime != null;
+  bool get _isFormValid => selectedDate != null && selectedTime != null && location != null;
   bool _isSubmitting = false;
 
   DateTime? get scheduledDateTime {
@@ -147,14 +150,15 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
+        // location: location,
       ));
     }
   }
 
-  void _showDateTimeError() {
+  void _showFormError() {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text('অনুগ্রহ করে তারিখ ও সময় নির্বাচন করুন'),
+        content: const Text('অনুগ্রহ করে তারিখ, সময় এবং ঠিকানা নির্বাচন করুন'),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -219,6 +223,10 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
                         
                         // Scheduling Section
                         _buildSchedulingSection(),
+                        const SizedBox(height: 20),
+                        
+                        // Address Section
+                        _buildAddressSection(),
                         const SizedBox(height: 20),
                         
                         // Description Section
@@ -496,6 +504,107 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
     );
   }
 
+  Widget _buildAddressSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'ঠিকানা',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.black,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildAddressCard(),
+      ],
+    );
+  }
+
+  Widget _buildAddressCard() {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: location != null ? AppColors.primary : Colors.grey.shade200,
+          width: location != null ? 2 : 1,
+        ),
+      ),
+      child: InkWell(
+        onTap: () async {
+          final selectedAddress = await context.push('/address-input') as AddressEntity?;
+          if (selectedAddress != null && mounted) {
+            setState(() => location = selectedAddress.formattedAddress);
+          }
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: location != null 
+                      ? AppColors.primary.withOpacity(0.1)
+                      : Colors.grey.shade100,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.location_on_rounded,
+                  color: location != null ? AppColors.primary : Colors.grey.shade600,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'সেবার ঠিকানা',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      location ?? 'ঠিকানা নির্বাচন করুন',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: location != null ? Colors.black : Colors.grey.shade500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: location != null ? AppColors.primary : Colors.transparent,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: location != null ? AppColors.primary : Colors.grey.shade400,
+                    width: 1.5,
+                  ),
+                ),
+                child: location != null
+                    ? const Icon(Icons.check, size: 16, color: Colors.white)
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildDescriptionSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -568,7 +677,7 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
                 borderRadius: BorderRadius.circular(12),
                 onTap: _isFormValid && !_isSubmitting
                     ? () => _submitBooking(authState)
-                    : _isFormValid ? null : _showDateTimeError,
+                    : null,
                 onTapDown: (_) => _buttonAnimationController.forward(),
                 onTapUp: (_) => _buttonAnimationController.reverse(),
                 onTapCancel: () => _buttonAnimationController.reverse(),

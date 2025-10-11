@@ -27,6 +27,8 @@ import 'package:smartsheba/features/booking/presentation/pages/my_bookings_page.
 import 'package:smartsheba/features/payment/presentation/pages/payment_page.dart';
 import 'package:smartsheba/features/chat/presentation/pages/chat_page.dart';
 import 'package:smartsheba/features/booking/presentation/pages/payment_status_page.dart';
+import 'package:smartsheba/core/location/presentation/pages/location_permission_page.dart';
+import 'package:smartsheba/core/location/presentation/pages/address_input_page.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -66,6 +68,16 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/profile-view',
       builder: (context, state) => const ProfileViewPage(),
+    ),
+
+    // --- LOCATION ROUTES ---
+    GoRoute(
+      path: '/location-permission',
+      builder: (context, state) => const LocationPermissionPage(),
+    ),
+    GoRoute(
+      path: '/address-input',
+      builder: (context, state) => const AddressInputPage(),
     ),
 
     // --- SERVICE DISCOVERY ROUTES ---
@@ -160,19 +172,18 @@ final GoRouter appRouter = GoRouter(
       ),
     ),
 
-    GoRoute(
-      path: '/confirmed-bookings',
-      builder: (context, state) => const ConfirmedBookingsPage(),
-    ),
+    // GoRoute(
+    //   path: '/confirmed-bookings',
+    //   builder: (context, state) => const ProviderConfirmedBooking(),
+    // ),
 
     GoRoute(
-    path: '/review/:bookingId',
-    builder: (context, state) => ReviewPage(
-      bookingId: state.pathParameters['bookingId']!,
+      path: '/review/:bookingId',
+      builder: (context, state) => ReviewPage(
+        bookingId: state.pathParameters['bookingId']!,
+      ),
     ),
-  ),
   ],
-  
 
   // --- REDIRECT LOGIC ---
   redirect: (context, state) {
@@ -283,8 +294,21 @@ final GoRouter appRouter = GoRouter(
       return null;
     }
 
+    // Location and Address pages (Customers and Providers only)
+    if (targetPath.startsWith('/location-permission') || targetPath.startsWith('/address-input')) {
+      if (!isAuthenticated) {
+        print('DEBUG: Redirecting unauthenticated user from $targetPath to /login');
+        return '/login';
+      }
+      if (userRole != Role.customer && userRole != Role.provider) {
+        print('DEBUG: Redirecting non-customer/provider from $targetPath to /');
+        return '/';
+      }
+      print('DEBUG: Allowing access to $targetPath');
+      return null;
+    }
 
-  // RBAC: REVIEW PAGE (Customers only)
+    // RBAC: REVIEW PAGE (Customers only)
     if (targetPath.startsWith('/review')) {
       if (!isAuthenticated) {
         print('DEBUG: Redirecting unauthenticated user from $targetPath to /login');
@@ -298,11 +322,6 @@ final GoRouter appRouter = GoRouter(
       return null;
     }
 
-
-
-
-    // ... existing redirect logic ...
-  
     // H. RBAC: Prevent providers/admin from registration page
     if (targetPath == '/provider-registration') {
       if (userRole == Role.provider || userRole == Role.admin) {
@@ -314,9 +333,6 @@ final GoRouter appRouter = GoRouter(
     print('DEBUG: No redirect needed for $targetPath');
     return null;
   },
-
-
-  
 
   errorBuilder: (context, state) => Scaffold(
     body: Center(child: Text('Page not found: ${state.uri}')),
