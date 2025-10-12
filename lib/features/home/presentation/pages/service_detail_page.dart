@@ -158,7 +158,7 @@ class ServiceDetailPage extends StatelessWidget {
         ],
       ),
 
-      // Sticky Bottom Action Bar
+      // ✅ FIXED: Sticky Bottom Action Bar with Proper Auth Protection
       bottomNavigationBar: _buildBottomActionBar(context, providerId, serviceCategory, price),
     );
   }
@@ -473,6 +473,7 @@ class ServiceDetailPage extends StatelessWidget {
     );
   }
 
+  // ✅ FIXED: Bottom Action Bar with Proper Auth & Role Protection
   Widget _buildBottomActionBar(BuildContext context, String providerId, String serviceCategory, double price) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -489,12 +490,118 @@ class ServiceDetailPage extends StatelessWidget {
           ),
         ],
       ),
-      child: BlocBuilder<AuthBloc, AuthState>(
-        builder: (context, state) {
-          if (state is Authenticated && state.user.role == Role.customer) {
+      child: SafeArea(
+        top: false,
+        child: BlocBuilder<AuthBloc, AuthState>(
+          builder: (context, state) {
+            // ✅ CASE 1: Authenticated Customer - Show Book Button
+            if (state is Authenticated && state.user.role == Role.customer) {
+              return Row(
+                children: [
+                  // Price Display
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '৳${price.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
+                        Text(
+                          'স্থির মূল্য',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Book Button
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: () => context.push(
+                        '/booking/$providerId/$serviceCategory/$price',
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.calendar_today_rounded, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'বুক করুন',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            // ✅ CASE 2: Authenticated Provider - Show Info Message
+            if (state is Authenticated && state.user.role == Role.provider) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded, color: Colors.orange.shade700, size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'প্রোভাইডাররা বুকিং করতে পারবেন না',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.orange.shade700,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => context.push('/provider-dashboard'),
+                      child: Text(
+                        'ড্যাশবোর্ড',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.orange.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            // ✅ CASE 3: Guest User - Show Login Button with Price
             return Row(
               children: [
-                // Price Display
+                // Price Display for Guest
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -519,12 +626,20 @@ class ServiceDetailPage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Book Button
+                // Login to Book Button
                 Expanded(
                   flex: 2,
-                  child: ElevatedButton(
-                    onPressed: () => context.push(
-                      '/booking/$providerId/$serviceCategory/$price',
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      _showLoginPrompt(context);
+                    },
+                    icon: const Icon(Icons.login_rounded, size: 20),
+                    label: const Text(
+                      'লগইন করে বুক করুন',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
@@ -535,49 +650,91 @@ class ServiceDetailPage extends StatelessWidget {
                       ),
                       elevation: 2,
                     ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.calendar_today_rounded, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'বুক করুন',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
               ],
             );
-          }
+          },
+        ),
+      ),
+    );
+  }
 
-          // For non-customers or logged out users
-          return SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => context.go('/login'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+  // ✅ Login Prompt Dialog
+  void _showLoginPrompt(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: const Text(
-                'বুকিং করতে লগইন করুন',
+              child: Icon(
+                Icons.login_rounded,
+                color: AppColors.primary,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'লগইন প্রয়োজন',
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-          );
-        },
+          ],
+        ),
+        content: const Text(
+          'সেবা বুক করতে আপনাকে লগইন করতে হবে। আপনার কাছে কি অ্যাকাউন্ট আছে?',
+          style: TextStyle(fontSize: 15, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              context.push('/register');
+            },
+            child: Text(
+              'নিবন্ধন করুন',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              context.push('/login');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'লগইন করুন',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

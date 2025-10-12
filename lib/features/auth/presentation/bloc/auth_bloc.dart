@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart'; // ✅ Added for Position
 import 'package:smartsheba/core/network/api_client.dart';
 import '../../../provider/domain/entities/provider_application.dart';
 import '../../domain/entities/user_entity.dart';
@@ -30,6 +31,7 @@ class UpdateProfileEvent extends AuthEvent {
   final String? gender;
   final DateTime? dateOfBirth;
   final String? profileImageUrl;
+  final Position? location; // ✅ Added new field
 
   UpdateProfileEvent({
     required this.name,
@@ -40,6 +42,7 @@ class UpdateProfileEvent extends AuthEvent {
     this.gender,
     this.dateOfBirth,
     this.profileImageUrl,
+    this.location, // ✅ Added to constructor
   });
 }
 
@@ -72,10 +75,12 @@ class OtpSent extends AuthState {
   OtpSent(this.phoneNumber);
 }
 
+
+
 /// --- BLOC ---
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   AuthBloc() : super(AuthInitial()) {
-    /// Send OTP
+    /// --- SEND OTP ---
     on<SendOtpEvent>((event, emit) async {
       emit(AuthLoading());
       try {
@@ -92,7 +97,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     });
 
-    /// Verify OTP
+    /// --- VERIFY OTP ---
     on<VerifyOtpEvent>((event, emit) async {
       emit(AuthLoading());
       try {
@@ -111,44 +116,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
     });
 
-    /// Logout - FIXED VERSION
+    /// --- LOGOUT ---
     on<LogoutEvent>((event, emit) async {
       print('🔄 LOGOUT: Starting logout process...');
-      
-      // Immediately show loading state
       emit(AuthLoading());
-      
       try {
         final prefs = await SharedPreferences.getInstance();
-        print('🔄 LOGOUT: SharedPreferences instance obtained');
-        
-        // Check if user data exists before removing
-        final userExists = prefs.containsKey('user');
-        print('🔄 LOGOUT: User data exists: $userExists');
-        
-        if (userExists) {
+        if (prefs.containsKey('user')) {
           await prefs.remove('user');
-          print('✅ LOGOUT: User data removed from SharedPreferences');
+          print('✅ LOGOUT: User data removed');
         } else {
-          print('ℹ️ LOGOUT: No user data found to remove');
+          print('ℹ️ LOGOUT: No user data found');
         }
-        
-        // Clear any other related data if needed
         await prefs.reload();
-        print('✅ LOGOUT: SharedPreferences reloaded');
-        
-        // Ensure we emit Unauthenticated state
         emit(Unauthenticated());
         print('✅ LOGOUT: Successfully emitted Unauthenticated state');
-        
       } catch (e) {
         print('❌ LOGOUT ERROR: $e');
-        // Even if there's an error, we should emit Unauthenticated
         emit(Unauthenticated());
       }
     });
 
-    /// Enhanced Profile Update
+    /// --- UPDATE PROFILE ---
     on<UpdateProfileEvent>((event, emit) async {
       final currentState = state;
       if (currentState is Authenticated) {
@@ -168,13 +157,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             gender: genderEnum,
             dateOfBirth: event.dateOfBirth,
             profileImageUrl: event.profileImageUrl,
+            location: event.location, // ✅ Updated with location
             updatedAt: DateTime.now(),
           );
 
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('user', jsonEncode(updatedUser.toJson()));
 
-          // Remove artificial delay for better performance
           emit(Authenticated(updatedUser));
         } catch (e) {
           emit(AuthError('প্রোফাইল আপডেটে ত্রুটি: $e'));
@@ -183,79 +172,59 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(AuthError('প্রোফাইল আপডেট করতে লগইন করতে হবে'));
       }
     });
+    
 
-    /// Provider Application
-  // In your auth_bloc.dart - Update the SubmitProviderApplicationEvent handler
-  on<SubmitProviderApplicationEvent>((event, emit) async {
-    final currentState = state;
+    /// --- SUBMIT PROVIDER APPLICATION ---
+    on<SubmitProviderApplicationEvent>((event, emit) async {
+      final currentState = state;
 
-    if (currentState is! Authenticated) {
-      emit(AuthError('অ্যাপ্লিকেশন সাবমিট করতে লগইন প্রয়োজন।'));
-      return;
-    }
+      if (currentState is! Authenticated) {
+        emit(AuthError('অ্যাপ্লিকেশন সাবমিট করতে লগইন প্রয়োজন।'));
+        return;
+      }
 
-    emit(AuthLoading());
-    try {
-      // Convert customer to provider
-      final updatedUser = currentState.user.copyWith(
-        // 'role': Role.provider,
-        updatedAt: DateTime.now(),
-      );
+      emit(AuthLoading());
+      try {
+        final updatedUser = currentState.user.copyWith(
+          updatedAt: DateTime.now(),
+        );
 
-      // Save to SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('user', jsonEncode(updatedUser.toJson()));
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('user', jsonEncode(updatedUser.toJson()));
 
-      // Emit the updated user with provider role
-      emit(Authenticated(updatedUser));
-      
-      print('✅ PROVIDER APPLICATION: User ${updatedUser.id} is now a provider');
+        emit(Authenticated(updatedUser));
+        print('✅ PROVIDER APPLICATION: User ${updatedUser.id} is now a provider');
+      } catch (e) {
+        print('❌ PROVIDER APPLICATION ERROR: $e');
+        emit(AuthError('অ্যাপ্লিকেশন জমা দিতে সমস্যা হয়েছে: $e'));
+      }
+    });
 
-    } catch (e) {
-      print('❌ PROVIDER APPLICATION ERROR: $e');
-      emit(AuthError('অ্যাপ্লিকেশন জমা দিতে সমস্যা হয়েছে: $e'));
-    }
-  });
-
-    // Load saved user - FIXED VERSION
+    /// --- LOAD SAVED USER ---
     _loadSavedUser();
   }
 
-  // FIXED: Improved user loading with better error handling
+  /// Helper: Load saved user from SharedPreferences
   void _loadSavedUser() async {
-    print('🔄 AUTH: Loading saved user from SharedPreferences...');
-    
-    // Don't load if we're already in a specific state
-    if (state is! AuthInitial) {
-      print('ℹ️ AUTH: Skipping load - already in state: ${state.runtimeType}');
-      return;
-    }
+    print('🔄 AUTH: Loading saved user...');
+    if (state is! AuthInitial) return;
 
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedUserJson = prefs.getString('user');
-      
+
       if (savedUserJson != null && savedUserJson.isNotEmpty) {
-        print('✅ AUTH: Found saved user data');
         final userMap = jsonDecode(savedUserJson) as Map<String, dynamic>;
         final user = UserEntity.fromJson(userMap);
-        
-        // Only emit if we're still in initial state
-        if (state is AuthInitial) {
-          emit(Authenticated(user));
-          print('✅ AUTH: Successfully loaded and authenticated user');
-        }
+        emit(Authenticated(user));
+        print('✅ AUTH: User loaded successfully');
       } else {
-        print('ℹ️ AUTH: No saved user found, remaining unauthenticated');
-        if (state is AuthInitial) {
-          emit(Unauthenticated());
-        }
+        emit(Unauthenticated());
+        print('ℹ️ AUTH: No saved user found');
       }
     } catch (e) {
+      emit(Unauthenticated());
       print('❌ AUTH ERROR: Failed to load user: $e');
-      if (state is AuthInitial) {
-        emit(Unauthenticated());
-      }
     }
   }
 }

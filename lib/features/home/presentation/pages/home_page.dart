@@ -79,16 +79,64 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       appBar: _buildModernAppBar(context, theme),
       body: BlocBuilder<AuthBloc, AuthState>(
         builder: (context, state) {
+          print('🔍 HomePage state: ${state.runtimeType}');
+          
+          // Show loading only during initial auth check
+          if (state is AuthLoading || state is AuthInitial) {
+            return const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('লোড হচ্ছে...'),
+                ],
+              ),
+            );
+          }
+          
+          // ✅ AUTHENTICATED USER - Full features
           if (state is Authenticated) {
             return FadeTransition(
               opacity: _fadeAnimation,
               child: SlideTransition(
                 position: _slideAnimation,
-                child: _buildMainContent(context, state.user, categories, theme),
+                child: _buildAuthenticatedContent(context, state.user, categories, theme),
               ),
             );
           }
-          return const Center(child: CircularProgressIndicator());
+          
+          // ✅ GUEST USER - Browse freely with login prompts
+          if (state is Unauthenticated) {
+            return FadeTransition(
+              opacity: _fadeAnimation,
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: _buildGuestContent(context, categories, theme),
+              ),
+            );
+          }
+          
+          // Error state
+          if (state is AuthError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(state.message),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => context.go('/login'),
+                    child: const Text('লগইন করুন'),
+                  ),
+                ],
+              ),
+            );
+          }
+          
+          return const Center(child: Text('কিছু ভুল হয়েছে'));
         },
       ),
       floatingActionButton: _buildFloatingActionButton(context, theme),
@@ -97,6 +145,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  // ========== APP BAR (Responsive to Auth State) ==========
   PreferredSizeWidget _buildModernAppBar(BuildContext context, ThemeData theme) {
     return PreferredSize(
       preferredSize: const Size.fromHeight(80.0),
@@ -130,7 +179,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white, // Fixed: Using solid color instead of gradient
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
@@ -154,7 +203,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
+                      const Text(
                         'শেবা',
                         style: TextStyle(
                           color: Colors.white,
@@ -178,11 +227,20 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 // Search Icon
                 _buildSearchIcon(context),
                 const SizedBox(width: 8),
-                // Notification Icon
-                _buildNotificationIcon(context),
-                const SizedBox(width: 8),
-                // Profile Icon
-                _buildProfileIcon(context),
+                // Notification Icon (only for authenticated)
+                BlocBuilder<AuthBloc, AuthState>(
+                  builder: (context, state) {
+                    if (state is Authenticated) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: _buildNotificationIcon(context),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+                // Profile Icon or Login Button
+                _buildProfileOrLoginButton(context),
                 const SizedBox(width: 4),
               ],
             ),
@@ -202,7 +260,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       child: IconButton(
         icon: const Icon(Icons.search_rounded, color: Colors.white, size: 24),
         onPressed: () {
-          // Navigate to search page
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('সার্চ ফিচার (শীঘ্রই আসছে)'),
@@ -255,47 +312,70 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildProfileIcon(BuildContext context) {
-    final state = context.watch<AuthBloc>().state;
-    if (state is Authenticated) {
-      final user = state.user;
-      return Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: InkWell(
-          onTap: () {
-            if (user.role == Role.provider) {
-              context.push('/provider-dashboard');
-            } else {
-              context.push('/profile-view');
-            }
-          },
-          borderRadius: BorderRadius.circular(12),
-          child: Hero(
-            tag: 'profile_avatar',
-            child: CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.white.withOpacity(0.3),
-              child: Text(
-                user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+  Widget _buildProfileOrLoginButton(BuildContext context) {
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        if (state is Authenticated) {
+          final user = state.user;
+          return Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: InkWell(
+              onTap: () {
+                if (user.role == Role.provider) {
+                  context.push('/provider-dashboard');
+                } else {
+                  context.push('/profile-view');
+                }
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Hero(
+                tag: 'profile_avatar',
+                child: CircleAvatar(
+                  radius: 16,
+                  backgroundColor: Colors.white.withOpacity(0.3),
+                  child: Text(
+                    user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
             ),
+          );
+        }
+        
+        // Guest - Show login button
+        return TextButton(
+          onPressed: () => context.push('/login'),
+          style: TextButton.styleFrom(
+            backgroundColor: Colors.white.withOpacity(0.2),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
-        ),
-      );
-    }
-    return const SizedBox.shrink();
+          child: const Text(
+            'লগইন',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+          ),
+        );
+      },
+    );
   }
 
-  Widget _buildMainContent(BuildContext context, UserEntity user, List<ServiceCategory> categories, ThemeData theme) {
+  // ========== AUTHENTICATED CONTENT ==========
+  Widget _buildAuthenticatedContent(BuildContext context, UserEntity user, List<ServiceCategory> categories, ThemeData theme) {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Column(
@@ -312,6 +392,25 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  // ========== GUEST CONTENT ==========
+  Widget _buildGuestContent(BuildContext context, List<ServiceCategory> categories, ThemeData theme) {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildGuestWelcomeHeader(context, theme),
+          _buildSearchSection(context, theme),
+          _buildGuestPrompt(context, theme), // ✅ Call to action
+          _buildFeaturedServices(context, categories, theme),
+          _buildCategoriesGrid(context, categories, theme),
+          const SizedBox(height: 100),
+        ],
+      ),
+    );
+  }
+
+  // ========== WELCOME HEADERS ==========
   Widget _buildWelcomeHeader(BuildContext context, UserEntity user, ThemeData theme) {
     return Container(
       width: double.infinity,
@@ -348,6 +447,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
                           'স্বাগতম, ${user.name.split(' ').first}!',
@@ -384,7 +484,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white, // Fixed: Using solid color instead of gradient
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
@@ -439,6 +539,227 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildGuestWelcomeHeader(BuildContext context, ThemeData theme) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            const Color(0xFF2196F3).withOpacity(0.9),
+            const Color(0xFF1976D2).withOpacity(0.8),
+          ],
+        ),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2196F3).withOpacity(0.3),
+            blurRadius: 25,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'শেবা ডাক-এ স্বাগতম!',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'আপনার প্রয়োজনীয় সেবা খুঁজুন',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Hero(
+                    tag: 'welcome_avatar',
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.home_repair_service,
+                        color: Color(0xFF9C27B0),
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white.withOpacity(0.2),
+                      Colors.white.withOpacity(0.1),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: Colors.white.withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.star, color: Colors.yellow.shade300, size: 18),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'বহুমুখী সেবার নির্ভরযোগ্য প্ল্যাটফর্ম',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ========== GUEST PROMPT (Call to Action) ==========
+  Widget _buildGuestPrompt(BuildContext context, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF9C27B0), Color(0xFF7B1FA2)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF9C27B0).withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.account_circle, color: Colors.white, size: 28),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'আপনার অ্যাকাউন্ট তৈরি করুন',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'সেবা বুক করতে, চ্যাট করতে এবং আরও সুবিধা পেতে লগইন করুন',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.9),
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => context.push('/login'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF9C27B0),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      'লগইন করুন',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => context.push('/register'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: const BorderSide(color: Colors.white, width: 2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'নিবন্ধন',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ========== SEARCH SECTION ==========
   Widget _buildSearchSection(BuildContext context, ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.all(20.0),
@@ -460,14 +781,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           child: InkWell(
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
+                const SnackBar(
                   content: Text('সার্চ ফিচার (শীঘ্রই আসছে)'),
                   backgroundColor: Colors.blue,
                   behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  duration: Duration(seconds: 2),
                 ),
               );
             },
@@ -506,6 +823,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  // ========== QUICK ACTIONS (Authenticated Users Only) ==========
   Widget _buildQuickActions(BuildContext context, UserEntity user, ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -557,9 +875,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
         _buildActionCard(
           context: context,
-          onTap: () {
-            context.push('/my-bookings');
-          },
+          onTap: () => context.push('/my-bookings'),
           icon: Icons.calendar_month_rounded,
           title: 'আমার বুকিং',
           subtitle: 'চলমান ও সম্পন্ন সেবাগুলো দেখুন',
@@ -655,6 +971,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  // ========== FEATURED SERVICES ==========
   Widget _buildFeaturedServices(BuildContext context, List<ServiceCategory> categories, ThemeData theme) {
     final featuredCategories = categories.take(6).toList();
     
@@ -676,7 +993,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
               ),
               TextButton(
-                onPressed: () => context.push('/services'),
+                onPressed: () => context.go('/services/all'),
                 style: TextButton.styleFrom(
                   foregroundColor: const Color(0xFF2196F3),
                 ),
@@ -773,6 +1090,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  // ========== CATEGORIES GRID ==========
   Widget _buildCategoriesGrid(BuildContext context, List<ServiceCategory> categories, ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -822,7 +1140,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: () => context.push('/services/${category.id}'),
+                    onTap: () => context.go('/services/${category.id}'),
                     borderRadius: BorderRadius.circular(20),
                     child: Padding(
                       padding: const EdgeInsets.all(16.0),
@@ -888,6 +1206,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     return colors[index % colors.length];
   }
 
+  // ========== FLOATING ACTION BUTTON ==========
   Widget _buildFloatingActionButton(BuildContext context, ThemeData theme) {
     return Container(
       decoration: BoxDecoration(
@@ -918,77 +1237,173 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  // ========== BOTTOM NAVIGATION ==========
   Widget _buildBottomNavigation(BuildContext context, ThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, -4),
+              ),
+            ],
+            border: Border(
+              top: BorderSide(color: Colors.grey.shade200, width: 1),
+            ),
           ),
-        ],
-        border: Border(
-          top: BorderSide(color: Colors.grey.shade200, width: 1),
+          child: SafeArea(
+            top: false,
+            child: BottomNavigationBar(
+              type: BottomNavigationBarType.fixed,
+              backgroundColor: Colors.white,
+              selectedItemColor: const Color(0xFF2196F3),
+              unselectedItemColor: Colors.grey.shade600,
+              selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+              elevation: 0,
+              currentIndex: 0,
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.home_rounded),
+                  activeIcon: Icon(Icons.home),
+                  label: 'হোম',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.grid_view_rounded),
+                  activeIcon: Icon(Icons.grid_view),
+                  label: 'সেবা',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.chat_bubble_outline_rounded),
+                  activeIcon: Icon(Icons.chat_bubble),
+                  label: 'মেসেজ',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.person_outline_rounded),
+                  activeIcon: Icon(Icons.person),
+                  label: 'প্রোফাইল',
+                ),
+              ],
+              onTap: (index) {
+                final isAuthenticated = state is Authenticated;
+                
+                switch (index) {
+                  case 0:
+                    // Already on home
+                    break;
+                  case 1:
+                    
+                    if (isAuthenticated) {
+                      context.push('/services');
+                      // context.push('/profile-view');
+                    } else {
+                      _showLoginPrompt(context);
+                    }
+                    break;
+                  case 2:
+                    if (isAuthenticated) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('মেসেজিং (শীঘ্রই আসছে)'),
+                          backgroundColor: Colors.blue,
+                          behavior: SnackBarBehavior.floating,
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    } else {
+                      _showLoginPrompt(context);
+                    }
+                    break;
+                  case 3:
+                    if (isAuthenticated) {
+                      context.push('/profile-view');
+                    } else {
+                      _showLoginPrompt(context);
+                    }
+                    break;
+                }
+              },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ========== LOGIN PROMPT DIALOG ==========
+  void _showLoginPrompt(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
         ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: const Color(0xFF2196F3),
-          unselectedItemColor: Colors.grey.shade600,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
-          elevation: 0,
-          currentIndex: 0,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded),
-              activeIcon: Icon(Icons.home),
-              label: 'হোম',
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2196F3).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.login_rounded,
+                color: Color(0xFF2196F3),
+                size: 24,
+              ),
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.grid_view_rounded),
-              activeIcon: Icon(Icons.grid_view),
-              label: 'সেবা',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.chat_bubble_outline_rounded),
-              activeIcon: Icon(Icons.chat_bubble),
-              label: 'মেসেজ',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline_rounded),
-              activeIcon: Icon(Icons.person),
-              label: 'প্রোফাইল',
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'লগইন প্রয়োজন',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
-          onTap: (index) {
-            switch (index) {
-              case 0:
-                break;
-              case 1:
-                context.push('/services');
-                break;
-              case 2:
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('মেসেজিং (শীঘ্রই আসছে)'),
-                    backgroundColor: Colors.blue,
-                    behavior: SnackBarBehavior.floating,
-                    duration: Duration(seconds: 2),
-                  ),
-                );
-                break;
-              case 3:
-                context.push('/profile-view');
-                break;
-            }
-          },
         ),
+        content: const Text(
+          'এই ফিচার ব্যবহার করতে আপনাকে লগইন করতে হবে।',
+          style: TextStyle(fontSize: 16),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'বাতিল',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              context.push('/login');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2196F3),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              'লগইন করুন',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
