@@ -1,3 +1,5 @@
+import 'package:geolocator/geolocator.dart';
+
 enum Role { customer, provider, admin }
 
 enum Gender { male, female, other }
@@ -9,7 +11,7 @@ class UserEntity {
   final String? email;
   final String token;
   final Role role;
-  
+
   // Profile Information
   final String? address;
   final String? city;
@@ -17,11 +19,14 @@ class UserEntity {
   final Gender? gender;
   final DateTime? dateOfBirth;
   final String? profileImageUrl;
-  
+
   // Additional Information
   final bool isVerified;
   final DateTime createdAt;
   final DateTime? updatedAt;
+
+  // ✅ Location field
+  final Position? location;
 
   const UserEntity({
     required this.id,
@@ -39,9 +44,28 @@ class UserEntity {
     this.isVerified = false,
     required this.createdAt,
     this.updatedAt,
+    this.location, // ✅ Added
   });
 
   factory UserEntity.fromJson(Map<String, dynamic> json) {
+    final lat = json['location_lat'] as double?;
+    final lng = json['location_lng'] as double?;
+    Position? location;
+    if (lat != null && lng != null) {
+      location = Position(
+        latitude: lat,
+        longitude: lng,
+        timestamp: DateTime.now(),
+        accuracy: 0,
+        altitude: 0,
+        heading: 0,
+        speed: 0,
+        speedAccuracy: 0,
+        altitudeAccuracy: 0,
+        headingAccuracy:0
+      );
+    }
+
     return UserEntity(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -72,6 +96,7 @@ class UserEntity {
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'] as String)
           : null,
+      location: location, // ✅ Added
     );
   }
 
@@ -91,9 +116,10 @@ class UserEntity {
         'is_verified': isVerified,
         'created_at': createdAt.toIso8601String(),
         'updated_at': updatedAt?.toIso8601String(),
+        if (location != null) 'location_lat': location!.latitude,
+        if (location != null) 'location_lng': location!.longitude,
       };
 
-  // Copy method for updates (immutable entity)
   UserEntity copyWith({
     String? name,
     String? email,
@@ -105,6 +131,7 @@ class UserEntity {
     String? profileImageUrl,
     bool? isVerified,
     DateTime? updatedAt,
+    Position? location, // ✅ Added
   }) {
     return UserEntity(
       id: id,
@@ -122,10 +149,10 @@ class UserEntity {
       isVerified: isVerified ?? this.isVerified,
       createdAt: createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
+      location: location ?? this.location, // ✅ Added
     );
   }
 
-  // Helper methods
   String get fullAddress {
     final parts = <String>[];
     if (address != null && address!.isNotEmpty) parts.add(address!);
@@ -167,7 +194,6 @@ class UserEntity {
         city!.isNotEmpty;
   }
 
-  // Convert Gender string (Bengali) to enum
   static Gender? genderFromString(String? genderStr) {
     if (genderStr == null) return null;
     switch (genderStr) {
@@ -182,7 +208,6 @@ class UserEntity {
     }
   }
 
-  // Convert Gender enum to Bengali string
   static String genderToString(Gender? gender) {
     if (gender == null) return '';
     switch (gender) {

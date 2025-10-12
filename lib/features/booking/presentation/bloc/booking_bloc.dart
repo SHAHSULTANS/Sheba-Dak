@@ -14,6 +14,7 @@ class CreateBookingEvent extends BookingEvent {
   final DateTime scheduledAt;
   final double price;
   final String? description;
+  final String? location; // ✅ Added location parameter
 
   CreateBookingEvent({
     required this.customerId,
@@ -22,6 +23,7 @@ class CreateBookingEvent extends BookingEvent {
     required this.scheduledAt,
     required this.price,
     this.description,
+    this.location, // ✅ Added
   });
 }
 
@@ -97,6 +99,8 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
     on<CreateBookingEvent>((event, emit) async {
       emit(BookingLoading());
       try {
+        print('🔍 BookingBloc: Creating booking with location: ${event.location}');
+        
         final response = await ApiClient.createBooking(
           event.customerId,
           event.providerId,
@@ -104,18 +108,22 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
           event.scheduledAt,
           event.price,
           event.description,
+          event.location, // ✅ Pass location to API
         );
+
+        print('🔍 BookingBloc: API response: $response');
 
         if (response['success'] == true) {
           emit(BookingSuccess(
             bookingId: response['id'],
-            message: response['message'] ?? 'বুকিং সফলভাবে তৈরি হয়েছে',
+            message: response['message'] ?? 'বুকিং সফলভাবে তৈরি হয়েছে',
           ));
         } else {
           emit(BookingFailure(response['message'] ?? 'বুকিং ব্যর্থ হয়েছে'));
         }
       } catch (e) {
-        emit(BookingFailure('বুকিং করার সময় ত্রুটি: $e'));
+        print('🔍 BookingBloc: Error creating booking: $e');
+        emit(BookingFailure('বুকিং করার সময় ত্রুটি: $e'));
       }
     });
 
@@ -153,12 +161,12 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
           event.comment,
         );
 
-        print('DEBUG: SubmitReviewEvent response: $response'); // Debug log
+        print('DEBUG: SubmitReviewEvent response: $response');
         if (response['success'] == true) {
           print('DEBUG: Emitting ReviewSuccess for reviewId: ${response['id']}');
           emit(ReviewSuccess(
             reviewId: response['id'],
-            message: response['message'] ?? 'রিভিউ সফলভাবে জমা দেওয়া হয়েছে',
+            message: response['message'] ?? 'রিভিউ সফলভাবে জমা দেওয়া হয়েছে',
           ));
         } else {
           print('DEBUG: Emitting ReviewFailure: ${response['message'] ?? 'রিভিউ জমা ব্যর্থ হয়েছে'}');
@@ -166,7 +174,7 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
         }
       } catch (e) {
         print('DEBUG: SubmitReviewEvent error: $e');
-        emit(ReviewFailure('রিভিউ জমা করার সময় ত্রুটি: $e'));
+        emit(ReviewFailure('রিভিউ জমা করার সময় ত্রুটি: $e'));
       }
     });
 

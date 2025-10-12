@@ -86,6 +86,8 @@ class ApiClient {
     };
   }
 
+  // In lib/core/network/api_client.dart
+
   static Future<Map<String, dynamic>> createBooking(
     String customerId,
     String providerId,
@@ -93,28 +95,37 @@ class ApiClient {
     DateTime scheduledAt,
     double price,
     String? description,
+    String? location, // ✅ Add this parameter
   ) async {
-    await Future.delayed(const Duration(seconds: 1));
-    final id = const Uuid().v4();
-    final booking = BookingEntity(
-      id: id,
-      customerId: customerId,
-      providerId: providerId,
-      serviceCategory: serviceCategory,
-      scheduledAt: scheduledAt,
-      status: BookingStatus.pending,
-      price: price,
-      description: description,
-    );
-    DummyData.addBooking(booking);
-    return {
-      'success': true,
-      'id': id,
-      'status': 'pending',
-      'message': 'বুকিং সফলভাবে তৈরি হয়েছে (নিশ্চিতকরণের অপেক্ষায়)',
-    };
-  }
+    try {
+      final newBooking = BookingEntity(
+        id: 'booking_${DateTime.now().millisecondsSinceEpoch}',
+        customerId: customerId,
+        providerId: providerId,
+        serviceCategory: serviceCategory,
+        scheduledAt: scheduledAt,
+        status: BookingStatus.pending,
+        price: price,
+        description: description,
+        location: location, // ✅ Add this field
+      );
 
+      DummyData.addBooking(newBooking);
+
+      return {
+        'success': true,
+        'id': newBooking.id,
+        'message': 'Booking created successfully',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Failed to create booking: $e',
+      };
+    }
+  }
+    
+  
   static Future<Map<String, dynamic>> updateBookingStatus(
     String id,
     BookingStatus newStatus,

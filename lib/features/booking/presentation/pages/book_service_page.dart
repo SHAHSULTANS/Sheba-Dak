@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:smartsheba/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:smartsheba/features/auth/presentation/pages/address_input_page.dart';
 import 'package:smartsheba/features/booking/presentation/bloc/booking_bloc.dart';
 import 'package:smartsheba/core/theme/app_theme.dart';
 import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
 import 'package:smartsheba/features/booking/domain/entities/booking_entity.dart';
 import 'package:smartsheba/core/network/api_client.dart';
-import 'package:smartsheba/core/location/presentation/pages/address_input_page.dart';
-import 'package:smartsheba/core/location/domain/entities/address_entity.dart';
 
 class BookServicePage extends StatefulWidget {
   final String providerId;
@@ -27,19 +27,25 @@ class BookServicePage extends StatefulWidget {
   State<BookServicePage> createState() => _BookServicePageState();
 }
 
-class _BookServicePageState extends State<BookServicePage> with SingleTickerProviderStateMixin {
+class _BookServicePageState extends State<BookServicePage>
+    with SingleTickerProviderStateMixin {
   DateTime? selectedDate;
   TimeOfDay? selectedTime;
   String? location;
+  Position? _selectedPosition;
   final TextEditingController _descriptionController = TextEditingController();
   final FocusNode _descriptionFocusNode = FocusNode();
-  
+
   // Animation controllers
   late AnimationController _buttonAnimationController;
   late Animation<double> _buttonScaleAnimation;
-  
-  // Form validation
-  bool get _isFormValid => selectedDate != null && selectedTime != null && location != null;
+
+  // Form validation - ✅ Enhanced validation
+  bool get _isFormValid => selectedDate != null &&
+      selectedTime != null &&
+      location != null &&
+      location!.trim().isNotEmpty;
+
   bool _isSubmitting = false;
 
   DateTime? get scheduledDateTime {
@@ -56,7 +62,7 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize animations
     _buttonAnimationController = AnimationController(
       duration: const Duration(milliseconds: 200),
@@ -69,18 +75,43 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
       parent: _buttonAnimationController,
       curve: Curves.easeInOut,
     ));
+
+    // ✅ Safe initialization
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setInitialDateTime();
+      _loadSavedLocation();
+    });
+  }
+
+  // ✅ Safe load saved location using post frame callback
+  void _loadSavedLocation() {
+    if (!mounted) return;
     
-    // Set initial date to next available slot
-    _setInitialDateTime();
+    try {
+      final authState = context.read<AuthBloc>().state;
+      if (authState is Authenticated && authState.user.address != null) {
+        if (mounted) {
+          setState(() {
+            location = authState.user.address;
+            _selectedPosition = authState.user.location;
+          });
+          print('🔍 Loaded saved location from profile: $location');
+        }
+      }
+    } catch (e) {
+      print('🔍 Error loading saved location: $e');
+    }
   }
 
   void _setInitialDateTime() {
     final now = DateTime.now();
     final nextHour = now.add(const Duration(hours: 1));
-    setState(() {
-      selectedDate = DateTime(nextHour.year, nextHour.month, nextHour.day);
-      selectedTime = TimeOfDay(hour: nextHour.hour, minute: 0);
-    });
+    if (mounted) {
+      setState(() {
+        selectedDate = DateTime(nextHour.year, nextHour.month, nextHour.day);
+        selectedTime = TimeOfDay(hour: nextHour.hour, minute: 0);
+      });
+    }
   }
 
   Future<void> _selectDate() async {
@@ -104,7 +135,7 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
         );
       },
     );
-    
+
     if (pickedDate != null && mounted) {
       setState(() => selectedDate = pickedDate);
     }
@@ -129,18 +160,113 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
         );
       },
     );
-    
+
     if (pickedTime != null && mounted) {
       setState(() => selectedTime = pickedTime);
     }
   }
 
+  // ✅ MOBILE-SAFE ADDRESS SELECTION
+  Future<void> _selectAddress() async {
+    if (!mounted) return;
+
+    try {
+      print('🔍 BookServicePage: Starting address selection');
+
+      final result = await Navigator.of(context).push<Map<String, dynamic>>(
+        MaterialPageRoute(
+          builder: (context) => BlocProvider.value(
+            value: context.read<AuthBloc>(),
+            child: const AddressInputPage(),
+          ),
+          // ✅ MOBILE CRITICAL SETTINGS
+          fullscreenDialog: false,
+          maintainState: true,
+          settings: const RouteSettings(
+            name: 'address_input_booking',
+            arguments: {'from_booking': true},
+          ),
+        ),
+      );
+
+      print('🔍 BookServicePage: Address result received: $result');
+      print('🔍 BookServicePage: Still mounted: $mounted');
+
+      // ✅ Mobile-safe result processing
+      if (!mounted) {
+        print('🔍 BookServicePage unmounted during navigation');
+        return;
+      }
+
+      if (result != null &&
+          result['address'] != null &&
+          result['address'] is String &&
+          (result['address'] as String).trim().isNotEmpty) {
+
+        // ✅ Use addPostFrameCallback for mobile-safe state update
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              location = result['address'] as String;
+              _selectedPosition = result['position'] as Position?;
+            });
+            print('🔍 Address state updated successfully: ${result['address']}');
+
+            // ✅ Success feedback
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('ঠিকানা সফলভাবে যুক্ত হয়েছে ✅\n${result['address']}'),
+                  backgroundColor: Colors.green,
+                  duration: const Duration(seconds: 3),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              );
+            }
+          }
+        });
+      } else {
+        print('🔍 Invalid or empty address result: $result');
+        if (mounted && result != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('ঠিকানা সঠিকভাবে যুক্ত হয়নি'),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e, stackTrace) {
+      print('🔍 Address selection error: $e');
+      print('🔍 Stack trace: $stackTrace');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('ঠিকানা নির্বাচন করতে সমস্যা:\n$e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
+  }
+
   void _submitBooking(AuthState authState) {
-    if (!_isFormValid || _isSubmitting) return;
+    if (!_isFormValid || _isSubmitting) {
+      _showFormError();
+      return;
+    }
 
     if (authState is Authenticated) {
       setState(() => _isSubmitting = true);
-      
+
+      print('🔍 Submitting booking with location: $location');
+
       context.read<BookingBloc>().add(CreateBookingEvent(
         customerId: authState.user.id,
         providerId: widget.providerId,
@@ -150,25 +276,12 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
         description: _descriptionController.text.trim().isEmpty
             ? null
             : _descriptionController.text.trim(),
-        // location: location,
+        location: location, // ✅ Now properly validated
+        // serviceAddress: location, // Explicit service address
+        // locationLat: _selectedPosition?.latitude,
+        // locationLng: _selectedPosition?.longitude,
       ));
     }
-  }
-
-  void _showFormError() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('অনুগ্রহ করে তারিখ, সময় এবং ঠিকানা নির্বাচন করুন'),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        action: SnackBarAction(
-          label: 'ঠিক আছে',
-          textColor: Colors.white,
-          onPressed: () {},
-        ),
-      ),
-    );
   }
 
   @override
@@ -185,65 +298,69 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
       backgroundColor: Colors.grey.shade50,
       appBar: _buildAppBar(),
       body: BlocBuilder<AuthBloc, AuthState>(
+        // ✅ Optimized buildWhen to prevent unnecessary rebuilds
+        buildWhen: (previous, current) =>
+            current is! Authenticated ||
+            (current is Authenticated &&
+                (previous is! Authenticated ||
+                    previous.user.id != current.user.id ||
+                    previous.user.role != current.user.role)),
         builder: (context, authState) {
           if (authState is! Authenticated) {
-            return _buildUnauthorizedView('বুকিং দেওয়ার জন্য আপনাকে লগইন করতে হবে।');
+            return _buildUnauthorizedView('বুকিং দেওয়ার জন্য আপনাকে লগইন করতে হবে।');
           }
           if (authState.user.role != Role.customer) {
             return _buildUnauthorizedView('শুধুমাত্র গ্রাহকরাই বুকিং দিতে পারবেন।');
           }
 
-          return BlocConsumer<BookingBloc, BookingState>(
-            listener: (context, bookingState) async {
-              if (bookingState is BookingSuccess) {
-                _handleBookingSuccess(bookingState, authState);
-              } else if (bookingState is BookingFailure) {
-                _handleBookingFailure(bookingState);
-              }
-            },
-            builder: (context, bookingState) {
-              _isSubmitting = bookingState is BookingLoading;
-
-              return Stack(
-                children: [
-                  // Main Content
-                  SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
-                    physics: const BouncingScrollPhysics(),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header Section
-                        _buildHeaderSection(),
-                        const SizedBox(height: 24),
-                        
-                        // Service Details Card
-                        _buildServiceDetailsCard(),
-                        const SizedBox(height: 20),
-                        
-                        // Scheduling Section
-                        _buildSchedulingSection(),
-                        const SizedBox(height: 20),
-                        
-                        // Address Section
-                        _buildAddressSection(),
-                        const SizedBox(height: 20),
-                        
-                        // Description Section
-                        _buildDescriptionSection(),
-                        const SizedBox(height: 32),
-                      ],
-                    ),
-                  ),
-                  
-                  // Submit Button (Sticky Bottom)
-                  _buildSubmitButton(authState),
-                ],
-              );
-            },
-          );
+          // ✅ Pass authState to isolated content to prevent rebuild interference
+          return _buildAuthenticatedContent(context, authState);
         },
       ),
+    );
+  }
+
+  // ✅ Isolated authenticated content to preserve local state
+  Widget _buildAuthenticatedContent(BuildContext context, Authenticated authState) {
+    return BlocConsumer<BookingBloc, BookingState>(
+      listener: (context, bookingState) {
+        if (bookingState is BookingSuccess) {
+          _handleBookingSuccess(bookingState, authState);
+        } else if (bookingState is BookingFailure) {
+          _handleBookingFailure(bookingState);
+          setState(() => _isSubmitting = false);
+        }
+      },
+      builder: (context, bookingState) {
+        _isSubmitting = bookingState is BookingLoading;
+
+        return Stack(
+          children: [
+            // Main Content - ✅ Local state preserved here
+            SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeaderSection(),
+                  const SizedBox(height: 24),
+                  _buildServiceDetailsCard(),
+                  const SizedBox(height: 20),
+                  _buildSchedulingSection(),
+                  const SizedBox(height: 20),
+                  _buildAddressSection(), // ✅ Uses local state, not affected by Bloc
+                  const SizedBox(height: 20),
+                  _buildDescriptionSection(),
+                  const SizedBox(height: 32),
+                ],
+              ),
+            ),
+            // Submit Button
+            _buildSubmitButton(authState),
+          ],
+        );
+      },
     );
   }
 
@@ -328,14 +445,12 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // Service Info
             _buildDetailRow(
               icon: Icons.work_outline,
               title: 'পরিষেবা',
               value: widget.serviceCategory,
             ),
             const SizedBox(height: 16),
-            // Price Info
             _buildDetailRow(
               icon: Icons.attach_money_rounded,
               title: 'মূল্য',
@@ -410,24 +525,20 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
           ),
         ),
         const SizedBox(height: 16),
-        
-        // Date Selection
         _buildDateTimeCard(
           icon: Icons.calendar_today_rounded,
           title: 'তারিখ',
-          value: selectedDate == null 
+          value: selectedDate == null
               ? 'নির্বাচন করুন'
               : DateFormat('EEE, MMM d, yyyy').format(selectedDate!),
           onTap: _selectDate,
           isSelected: selectedDate != null,
         ),
         const SizedBox(height: 12),
-        
-        // Time Selection
         _buildDateTimeCard(
           icon: Icons.access_time_rounded,
           title: 'সময়',
-          value: selectedTime == null 
+          value: selectedTime == null
               ? 'নির্বাচন করুন'
               : selectedTime!.format(context),
           onTap: _selectTime,
@@ -459,7 +570,7 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: isSelected 
+            color: isSelected
                 ? AppColors.primary.withOpacity(0.1)
                 : Colors.grey.shade100,
             shape: BoxShape.circle,
@@ -522,23 +633,21 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
     );
   }
 
+  // ✅ UPDATED: Mobile-safe address card with proper validation
   Widget _buildAddressCard() {
+    final hasValidAddress = location != null && location!.trim().isNotEmpty;
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: location != null ? AppColors.primary : Colors.grey.shade200,
-          width: location != null ? 2 : 1,
+          color: hasValidAddress ? AppColors.primary : Colors.grey.shade200,
+          width: hasValidAddress ? 2 : 1,
         ),
       ),
       child: InkWell(
-        onTap: () async {
-          final selectedAddress = await context.push('/address-input') as AddressEntity?;
-          if (selectedAddress != null && mounted) {
-            setState(() => location = selectedAddress.formattedAddress);
-          }
-        },
+        onTap: _selectAddress, // ✅ Uses mobile-safe method
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(16),
@@ -548,14 +657,14 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: location != null 
+                  color: hasValidAddress
                       ? AppColors.primary.withOpacity(0.1)
                       : Colors.grey.shade100,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.location_on_rounded,
-                  color: location != null ? AppColors.primary : Colors.grey.shade600,
+                  color: hasValidAddress ? AppColors.primary : Colors.grey.shade600,
                   size: 20,
                 ),
               ),
@@ -573,30 +682,36 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      location ?? 'ঠিকানা নির্বাচন করুন',
+                      hasValidAddress
+                          ? location!.trim()
+                          : 'ঠিকানা নির্বাচন করুন',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
-                        color: location != null ? Colors.black : Colors.grey.shade500,
+                        color: hasValidAddress ? Colors.black : Colors.grey.shade500,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               Container(
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  color: location != null ? AppColors.primary : Colors.transparent,
+                  color: hasValidAddress ? AppColors.primary : Colors.transparent,
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: location != null ? AppColors.primary : Colors.grey.shade400,
+                    color: hasValidAddress ? AppColors.primary : Colors.grey.shade400,
                     width: 1.5,
                   ),
                 ),
-                child: location != null
+                child: hasValidAddress
                     ? const Icon(Icons.check, size: 16, color: Colors.white)
-                    : null,
+                    : const Icon(Icons.arrow_forward_ios,
+                        size: 14, color: Colors.grey),
               ),
             ],
           ),
@@ -659,6 +774,13 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
           border: Border(
             top: BorderSide(color: Colors.grey.shade200, width: 1),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
         ),
         child: AnimatedBuilder(
           animation: _buttonScaleAnimation,
@@ -671,7 +793,9 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
           child: SizedBox(
             width: double.infinity,
             child: Material(
-              color: _isFormValid ? AppColors.primary : Colors.grey.shade400,
+              color: _isFormValid && !_isSubmitting
+                  ? AppColors.primary
+                  : Colors.grey.shade400,
               borderRadius: BorderRadius.circular(12),
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
@@ -682,12 +806,13 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
                 onTapUp: (_) => _buttonAnimationController.reverse(),
                 onTapCancel: () => _buttonAnimationController.reverse(),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       if (_isSubmitting)
-                        SizedBox(
+                        const SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
@@ -696,10 +821,13 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
                           ),
                         )
                       else
-                        const Icon(Icons.check_circle_outline, color: Colors.white, size: 20),
+                        const Icon(Icons.check_circle_outline,
+                            color: Colors.white, size: 20),
                       const SizedBox(width: 8),
                       Text(
-                        _isSubmitting ? 'বুকিং তৈরি হচ্ছে...' : 'বুকিং নিশ্চিত করুন',
+                        _isSubmitting
+                            ? 'বুকিং তৈরি হচ্ছে...'
+                            : 'বুকিং নিশ্চিত করুন',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -745,7 +873,8 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -758,72 +887,107 @@ class _BookServicePageState extends State<BookServicePage> with SingleTickerProv
     );
   }
 
-  void _handleBookingSuccess(BookingSuccess bookingState, Authenticated authState) async {
-    final bookingId = bookingState.bookingId;
-    
-    try {
-      final allBookings = await ApiClient.getBookingsByUser(authState.user.id, 'customer');
-      final booking = allBookings.firstWhere((b) => b.id == bookingId);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '✅ বুকিং রিকোয়েস্ট সফল!',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'প্রোভাইডার কনফার্ম করলে পেমেন্ট করতে বলা হবে',
-                style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.9)),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 4),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
-      
-      if (booking.status == BookingStatus.pending) {
-        context.push('/my-bookings');
-      } else {
-        context.push('/payment/$bookingId');
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('রুটিং ত্রুটি: $e। আমার বুকিংস দেখুন।'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      context.push('/my-bookings');
-    }
-  }
-
-  void _handleBookingFailure(BookingFailure bookingState) {
+  void _showFormError() {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.error_outline, color: Colors.white, size: 20),
+            const Icon(Icons.warning_amber_rounded,
+                color: Colors.white, size: 20),
             const SizedBox(width: 8),
-            Expanded(child: Text('ত্রুটি: ${bookingState.message}')),
+            Expanded(
+              child: Text(
+                _isFormValid
+                    ? 'ফর্ম প্রসেসিং সমস্যা'
+                    : 'তারিখ, সময় এবং ঠিকানা নির্বাচন করুন',
+              ),
+            ),
           ],
         ),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        action: SnackBarAction(
-          label: 'বুঝেছি',
-          textColor: Colors.white,
-          onPressed: () {},
-        ),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8)),
+        duration: const Duration(seconds: 3),
       ),
     );
+  }
+
+  void _handleBookingSuccess(BookingSuccess bookingState,
+      Authenticated authState) async {
+    final bookingId = bookingState.bookingId;
+
+    try {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '✅ বুকিং রিকোয়েস্ট সফল!',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'প্রোভাইডার কনফার্ম করলে পেমেন্ট করতে বলা হবে',
+                  style: TextStyle(
+                      fontSize: 12, color: Colors.white.withOpacity(0.9)),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+
+        // ✅ Safe navigation
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            context.push('/my-bookings');
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('নেভিগেশন ত্রুটি: $e'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        context.push('/my-bookings');
+      }
+    }
+  }
+
+  void _handleBookingFailure(BookingFailure bookingState) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.error_outline,
+                  color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              Expanded(child: Text('ত্রুটি: ${bookingState.message}')),
+            ],
+          ),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8)),
+          action: SnackBarAction(
+            label: 'বুঝেছি',
+            textColor: Colors.white,
+            onPressed: () {},
+          ),
+        ),
+      );
+    }
   }
 }
