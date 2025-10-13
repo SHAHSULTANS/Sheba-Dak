@@ -41,4 +41,11 @@ class Validators {
     final regex = RegExp(r'^\d{4}$'); // Bangladesh postal code
     return regex.hasMatch(value) ? null : 'Invalid postal code (e.g., 1200)';
   }
+
+  static String? validateRequired(String? value, String message) {
+    if (value == null || value.isEmpty) {
+      return message;
+    }
+    return null;
+  }
 }

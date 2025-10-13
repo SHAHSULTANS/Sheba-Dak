@@ -15,7 +15,6 @@ import 'package:smartsheba/features/booking/domain/entities/booking_entity.dart'
 
 class ReviewPage extends StatefulWidget {
   final String bookingId;
-
   const ReviewPage({super.key, required this.bookingId});
 
   @override
@@ -29,7 +28,7 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
   BookingEntity? _booking;
   String _errorMessage = '';
   bool _hasExistingReview = false;
-  
+
   // Premium animation controllers
   late AnimationController _fadeController;
   late AnimationController _slideController;
@@ -37,7 +36,7 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _staggerAnimation;
-  
+
   // Selected feedback tags
   final List<String> _selectedTags = [];
   final List<String> _availableTags = [
@@ -53,16 +52,23 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
     'সরঞ্জামের মান'
   ];
 
+  // Prevent unnecessary rebuilds
+  bool _isDisposed = false;
+
   @override
   void initState() {
     super.initState();
     _initializePremiumAnimations();
     _fetchBooking();
+
+    // Use delayed initialization to prevent thread conflicts
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<BookingBloc>().add(ResetBookingState());
+      if (!_isDisposed) {
+        context.read<BookingBloc>().add(ResetBookingState());
+      }
     });
   }
-  
+
   void _initializePremiumAnimations() {
     _fadeController = AnimationController(
       duration: const Duration(milliseconds: 1200),
@@ -76,12 +82,12 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-    
+
     _fadeAnimation = CurvedAnimation(
       parent: _fadeController,
       curve: Curves.easeInOutCubic,
     );
-    
+
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.1),
       end: Offset.zero,
@@ -89,25 +95,30 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
       parent: _slideController,
       curve: Curves.fastEaseInToSlowEaseOut,
     ));
-    
+
     _staggerAnimation = CurvedAnimation(
       parent: _staggerController,
       curve: Curves.easeInOutCubic,
     );
-    
-    // Staggered animation sequence
+
+    // Staggered animation sequence with safety checks
     Future.delayed(const Duration(milliseconds: 300), () {
-      _fadeController.forward();
-      _slideController.forward();
+      if (!_isDisposed) {
+        _fadeController.forward();
+        _slideController.forward();
+      }
     });
-    
+
     Future.delayed(const Duration(milliseconds: 600), () {
-      _staggerController.forward();
+      if (!_isDisposed) {
+        _staggerController.forward();
+      }
     });
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
     _commentController.dispose();
     _fadeController.dispose();
     _slideController.dispose();
@@ -117,32 +128,34 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
 
   Future<void> _fetchBooking() async {
     try {
+      if (_isDisposed) return;
       setState(() {
         _isLoading = true;
         _errorMessage = '';
         _hasExistingReview = false;
       });
-
       final authState = context.read<AuthBloc>().state;
       if (authState is! Authenticated) {
+        if (_isDisposed) return;
         setState(() {
           _errorMessage = 'লগইন প্রয়োজন';
           _isLoading = false;
         });
         return;
       }
-
+      // Use cached data first to avoid unnecessary API calls
       final existingReviews = DummyData.getReviewsByBooking(widget.bookingId);
       if (existingReviews.isNotEmpty) {
+        if (_isDisposed) return;
         setState(() {
           _hasExistingReview = true;
           _isLoading = false;
         });
         return;
       }
-
+      // Add cancellation token pattern for API calls
       _booking = await ApiClient.getBookingById(widget.bookingId);
-
+      if (_isDisposed) return;
       if (_booking == null) {
         setState(() {
           _errorMessage = 'বুকিং পাওয়া যায়নি';
@@ -154,6 +167,7 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
         });
       }
     } catch (e) {
+      if (_isDisposed) return;
       setState(() {
         _errorMessage = 'বুকিং লোড করতে সমস্যা: $e';
         _isLoading = false;
@@ -165,7 +179,7 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final size = MediaQuery.of(context).size;
-    
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.dark.copyWith(
         statusBarColor: Colors.transparent,
@@ -179,22 +193,29 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
               HapticFeedback.mediumImpact();
               _showPremiumSuccessAnimation();
               Future.delayed(const Duration(milliseconds: 2200), () {
-                context.read<BookingBloc>().add(ResetBookingState());
-                context.push('/my-bookings');
+                if (!_isDisposed) {
+                  context.read<BookingBloc>().add(ResetBookingState());
+                  context.push('/my-bookings');
+                }
               });
             } else if (state is ReviewFailure) {
               HapticFeedback.heavyImpact();
               _showPremiumErrorSnackBar(state.message);
-              setState(() {
-                _isLoading = false;
-              });
+              if (!_isDisposed) {
+                setState(() {
+                  _isLoading = false;
+                });
+              }
             }
           },
           builder: (context, state) {
-            if (state is BookingLoading) {
-              _isLoading = true;
+            if (state is BookingLoading && !_isLoading) {
+              if (!_isDisposed) {
+                setState(() {
+                  _isLoading = true;
+                });
+              }
             }
-
             return _buildPremiumReviewContent(theme, size);
           },
         ),
@@ -365,6 +386,8 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
   }
 
   void _showPremiumErrorSnackBar(String message) {
+    if (_isDisposed) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -404,7 +427,7 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
 
   Widget _buildPremiumReviewContent(ThemeData theme, Size size) {
     final authState = context.read<AuthBloc>().state;
-    
+
     if (authState is! Authenticated || authState.user.role != Role.customer) {
       return _buildPremiumErrorState(
         icon: Icons.verified_user_rounded,
@@ -413,11 +436,9 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
         gradient: [Colors.orange.shade400, Colors.orange.shade600],
       );
     }
-
     if (_isLoading) {
       return _buildPremiumLoadingState();
     }
-
     if (_hasExistingReview) {
       return _buildPremiumErrorState(
         icon: Icons.verified_rounded,
@@ -426,7 +447,6 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
         gradient: [Colors.green.shade400, Colors.green.shade600],
       );
     }
-
     if (_errorMessage.isNotEmpty || _booking == null) {
       return _buildPremiumErrorState(
         icon: Icons.error_outline_rounded,
@@ -435,29 +455,29 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
         gradient: [Colors.red.shade400, Colors.red.shade600],
       );
     }
-
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
         _buildPremiumSliverAppBar(theme, size),
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 16.0 : 24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildPremiumBookingInfoCard(theme),
-                const SizedBox(height: 32),
+                SizedBox(height: MediaQuery.of(context).size.width < 600 ? 24.0 : 32.0),
                 _buildPremiumRatingSection(theme),
-                const SizedBox(height: 32),
+                SizedBox(height: MediaQuery.of(context).size.width < 600 ? 24.0 : 32.0),
                 _buildPremiumTagsSection(theme),
-                const SizedBox(height: 32),
+                SizedBox(height: MediaQuery.of(context).size.width < 600 ? 24.0 : 32.0),
                 _buildPremiumCommentSection(theme),
-                const SizedBox(height: 40),
+                SizedBox(height: 40),
                 _buildPremiumSubmitButton(theme),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 _buildPremiumCancelButton(theme),
-                const SizedBox(height: 40),
+                // Extra bottom padding for mobile
+                SizedBox(height: MediaQuery.of(context).padding.bottom + 20),
               ],
             ),
           ),
@@ -468,7 +488,7 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
 
   Widget _buildPremiumSliverAppBar(ThemeData theme, Size size) {
     return SliverAppBar(
-      expandedHeight: size.height * 0.35,
+      expandedHeight: size.height * 0.3, // Reduced for smaller screens
       floating: false,
       pinned: true,
       elevation: 0,
@@ -488,15 +508,15 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
           ),
           child: Stack(
             children: [
-              // Animated background elements
+              // Animated background elements - scaled for mobile
               Positioned(
-                right: -size.width * 0.2,
-                top: -size.height * 0.1,
+                right: -size.width * 0.15,
+                top: -size.height * 0.05,
                 child: AnimatedContainer(
                   duration: const Duration(seconds: 20),
                   curve: Curves.easeInOut,
-                  width: size.width * 0.6,
-                  height: size.width * 0.6,
+                  width: size.width * 0.4,
+                  height: size.width * 0.4,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
@@ -510,13 +530,13 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                 ),
               ),
               Positioned(
-                left: -size.width * 0.15,
-                bottom: -size.height * 0.1,
+                left: -size.width * 0.1,
+                bottom: -size.height * 0.05,
                 child: AnimatedContainer(
                   duration: const Duration(seconds: 15),
                   curve: Curves.easeInOut,
-                  width: size.width * 0.4,
-                  height: size.width * 0.4,
+                  width: size.width * 0.3,
+                  height: size.width * 0.3,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
@@ -532,7 +552,7 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
               // Content
               SafeArea(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: EdgeInsets.symmetric(horizontal: size.width < 600 ? 16.0 : 24.0),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -545,18 +565,18 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                           child: Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.all(16),
+                                padding: EdgeInsets.all(size.width < 600 ? 12.0 : 16.0),
                                 decoration: BoxDecoration(
                                   color: Colors.white.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
-                                child: const Icon(
+                                child: Icon(
                                   Icons.rate_review_rounded,
-                                  size: 32,
+                                  size: size.width < 600 ? 24.0 : 32.0,
                                   color: Colors.white,
                                 ),
                               ),
-                              const SizedBox(width: 16),
+                              SizedBox(width: size.width < 600 ? 12.0 : 16.0),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -567,15 +587,19 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                                         color: Colors.white,
                                         fontWeight: FontWeight.w800,
                                         letterSpacing: -0.5,
+                                        fontSize: size.width < 600 ? 18.0 : null,
                                       ),
                                     ),
-                                    const SizedBox(height: 8),
+                                    SizedBox(height: size.width < 600 ? 6.0 : 8.0),
                                     Text(
                                       'আপনার মূল্যবান মতামত আমাদের সেবার মান উন্নয়নে সহায়ক',
                                       style: theme.textTheme.bodyMedium?.copyWith(
                                         color: Colors.white.withOpacity(0.9),
                                         height: 1.4,
+                                        fontSize: size.width < 600 ? 13.0 : null,
                                       ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
                                 ),
@@ -629,14 +653,14 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 16.0 : 24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(14),
+                      padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 10.0 : 14.0),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
@@ -646,13 +670,13 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                         ),
                         borderRadius: BorderRadius.circular(16),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.receipt_long_rounded,
                         color: Colors.white,
-                        size: 24,
+                        size: MediaQuery.of(context).size.width < 600 ? 20.0 : 24.0,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: MediaQuery.of(context).size.width < 600 ? 12.0 : 16.0),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -660,19 +684,19 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                           Text(
                             'বুকিং রেফারেন্স',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: MediaQuery.of(context).size.width < 600 ? 11.0 : 12.0,
                               fontWeight: FontWeight.w600,
                               color: Colors.grey.shade600,
                               letterSpacing: 0.5,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: MediaQuery.of(context).size.width < 600 ? 3.0 : 4.0),
                           Text(
                             '#${widget.bookingId.substring(0, 8).toUpperCase()}',
-                            style: const TextStyle(
-                              fontSize: 18,
+                            style: TextStyle(
+                              fontSize: MediaQuery.of(context).size.width < 600 ? 16.0 : 18.0,
                               fontWeight: FontWeight.w800,
-                              color: Color(0xFF1A1A1A),
+                              color: const Color(0xFF1A1A1A),
                               letterSpacing: -0.5,
                             ),
                           ),
@@ -680,7 +704,7 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width < 600 ? 12.0 : 16.0, vertical: 6.0),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
@@ -697,7 +721,7 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                       child: Text(
                         'সম্পন্ন',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: MediaQuery.of(context).size.width < 600 ? 11.0 : 12.0,
                           fontWeight: FontWeight.w700,
                           color: Colors.green.shade700,
                           letterSpacing: 0.5,
@@ -706,9 +730,9 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: MediaQuery.of(context).size.width < 600 ? 16.0 : 24.0),
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 16.0 : 20.0),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -732,34 +756,57 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                           color: Colors.blue.shade600,
                         ),
                       ),
-                      Container(
-                        height: 40,
-                        width: 1,
-                        color: Colors.grey.shade300,
-                        margin: const EdgeInsets.symmetric(horizontal: 20),
-                      ),
-                      Expanded(
-                        child: _buildPremiumInfoItem(
-                          icon: Icons.calendar_today_rounded,
-                          label: 'তারিখ',
-                          value: _formatDate(_booking!.scheduledAt),
-                          color: Colors.purple.shade600,
+                      if (MediaQuery.of(context).size.width > 400) ...[
+                        Container(
+                          height: 40,
+                          width: 1,
+                          color: Colors.grey.shade300,
+                          margin: const EdgeInsets.symmetric(horizontal: 20),
                         ),
-                      ),
-                      Container(
-                        height: 40,
-                        width: 1,
-                        color: Colors.grey.shade300,
-                        margin: const EdgeInsets.symmetric(horizontal: 20),
-                      ),
-                      Expanded(
-                        child: _buildPremiumInfoItem(
-                          icon: Icons.access_time_rounded,
-                          label: 'সময়',
-                          value: _formatTime(_booking!.scheduledAt),
-                          color: Colors.orange.shade600,
+                        Expanded(
+                          child: _buildPremiumInfoItem(
+                            icon: Icons.calendar_today_rounded,
+                            label: 'তারিখ',
+                            value: _formatDate(_booking!.scheduledAt),
+                            color: Colors.purple.shade600,
+                          ),
                         ),
-                      ),
+                        Container(
+                          height: 40,
+                          width: 1,
+                          color: Colors.grey.shade300,
+                          margin: const EdgeInsets.symmetric(horizontal: 20),
+                        ),
+                        Expanded(
+                          child: _buildPremiumInfoItem(
+                            icon: Icons.access_time_rounded,
+                            label: 'সময়',
+                            value: _formatTime(_booking!.scheduledAt),
+                            color: Colors.orange.shade600,
+                          ),
+                        ),
+                      ] else ...[
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            children: [
+                              _buildPremiumInfoItem(
+                                icon: Icons.calendar_today_rounded,
+                                label: 'তারিখ',
+                                value: _formatDate(_booking!.scheduledAt),
+                                color: Colors.purple.shade600,
+                              ),
+                              SizedBox(height: 8),
+                              _buildPremiumInfoItem(
+                                icon: Icons.access_time_rounded,
+                                label: 'সময়',
+                                value: _formatTime(_booking!.scheduledAt),
+                                color: Colors.orange.shade600,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -784,13 +831,16 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
           children: [
             Icon(icon, size: 16, color: color),
             const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade600,
-                letterSpacing: 0.5,
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade600,
+                  letterSpacing: 0.5,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -803,6 +853,8 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
             fontWeight: FontWeight.w700,
             color: Color(0xFF1A1A1A),
           ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ],
     );
@@ -825,14 +877,14 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
               ),
             ],
           ),
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 16.0 : 24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 10.0 : 12.0),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
@@ -842,24 +894,25 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.star_rounded,
                       color: Colors.white,
-                      size: 20,
+                      size: MediaQuery.of(context).size.width < 600 ? 18.0 : 20.0,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: MediaQuery.of(context).size.width < 600 ? 10.0 : 12.0),
                   Text(
                     'সেবার মান রেট করুন',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                       color: const Color(0xFF1A1A1A),
                       letterSpacing: -0.5,
+                      fontSize: MediaQuery.of(context).size.width < 600 ? 16.0 : null,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: MediaQuery.of(context).size.width < 600 ? 16.0 : 24.0),
               Center(
                 child: Column(
                   children: [
@@ -869,8 +922,8 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                       direction: Axis.horizontal,
                       allowHalfRating: false,
                       itemCount: 5,
-                      itemSize: 52,
-                      itemPadding: const EdgeInsets.symmetric(horizontal: 6.0),
+                      itemSize: MediaQuery.of(context).size.width < 600 ? 40.0 : 52.0,
+                      itemPadding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width < 600 ? 4.0 : 6.0),
                       itemBuilder: (context, index) => AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
                         decoration: BoxDecoration(
@@ -898,26 +951,28 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                                 ]
                               : [],
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.star_rounded,
                           color: Colors.white,
                         ),
                       ),
                       onRatingUpdate: (rating) {
                         HapticFeedback.lightImpact();
-                        setState(() {
-                          _rating = rating;
-                        });
+                        if (!_isDisposed) {
+                          setState(() {
+                            _rating = rating;
+                          });
+                        }
                       },
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: MediaQuery.of(context).size.width < 600 ? 16.0 : 20.0),
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 300),
                       child: Text(
                         _getRatingText(),
                         key: ValueKey(_rating),
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: MediaQuery.of(context).size.width < 600 ? 14.0 : 16.0,
                           fontWeight: FontWeight.w700,
                           color: _getRatingColor(),
                           letterSpacing: -0.3,
@@ -951,14 +1006,15 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
               ),
             ],
           ),
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 16.0 : 24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 10.0 : 12.0),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
@@ -968,111 +1024,153 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.label_important_rounded,
                       color: Colors.white,
-                      size: 20,
+                      size: MediaQuery.of(context).size.width < 600 ? 18.0 : 20.0,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'সেবার বৈশিষ্ট্য নির্বাচন করুন',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF1A1A1A),
-                      letterSpacing: -0.5,
+                  SizedBox(width: MediaQuery.of(context).size.width < 600 ? 10.0 : 12.0),
+                  Expanded(
+                    child: Text(
+                      'সেবার বৈশিষ্ট্য নির্বাচন করুন',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF1A1A1A),
+                        letterSpacing: -0.5,
+                        fontSize: MediaQuery.of(context).size.width < 600 ? 14.0 : 16.0,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: _availableTags.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final tag = entry.value;
-                  final isSelected = _selectedTags.contains(tag);
-                  
-                  return AnimatedBuilder(
-                    animation: _staggerController,
-                    builder: (context, child) {
-                      final delay = index * 0.1;
-                      final animationValue = _staggerAnimation.value;
-                      final opacity = animationValue > delay 
-                          ? (animationValue - delay) * 5 
-                          : 0.0;
+              SizedBox(height: MediaQuery.of(context).size.width < 600 ? 16.0 : 20.0),
+              
+              // Mobile-friendly tags: No fixed height, let Wrap expand naturally
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Wrap(
+                    spacing: MediaQuery.of(context).size.width < 600 ? 6.0 : 8.0,
+                    runSpacing: MediaQuery.of(context).size.width < 600 ? 6.0 : 8.0,
+                    children: _availableTags.map((tag) {
+                      final isSelected = _selectedTags.contains(tag);
                       
-                      return Opacity(
-                        opacity: opacity.clamp(0.0, 1.0),
-                        child: Transform.translate(
-                          offset: Offset(0, 20 * (1 - opacity)),
-                          child: child,
+                      return GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          if (!_isDisposed) {
+                            setState(() {
+                              if (isSelected) {
+                                _selectedTags.remove(tag);
+                              } else {
+                                _selectedTags.add(tag);
+                              }
+                            });
+                          }
+                        },
+                        child: Container(
+                          constraints: BoxConstraints(
+                            minWidth: MediaQuery.of(context).size.width < 600 ? 80.0 : 100.0,
+                            maxWidth: MediaQuery.of(context).size.width < 600 ? 120.0 : 140.0,
+                          ),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: MediaQuery.of(context).size.width < 600 ? 10.0 : 12.0,
+                            vertical: MediaQuery.of(context).size.width < 600 ? 8.0 : 10.0,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: isSelected
+                                ? const LinearGradient(
+                                    colors: [Color(0xFF2196F3), Color(0xFF9C27B0)],
+                                  )
+                                : null,
+                            color: isSelected ? null : const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isSelected ? Colors.transparent : Colors.grey.shade300,
+                              width: 1.5,
+                            ),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: const Color(0xFF2196F3).withOpacity(0.3),
+                                      blurRadius: 15,
+                                      offset: const Offset(0, 5),
+                                    ),
+                                  ]
+                                : [],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                child: isSelected
+                                    ? Icon(Icons.check_rounded,
+                                        color: Colors.white, size: MediaQuery.of(context).size.width < 600 ? 12.0 : 14.0)
+                                    : const SizedBox(width: 14, height: 14),
+                              ),
+                              SizedBox(width: MediaQuery.of(context).size.width < 600 ? 4.0 : 6.0),
+                              Flexible(
+                                child: Text(
+                                  tag,
+                                  style: TextStyle(
+                                    fontSize: MediaQuery.of(context).size.width < 600 ? 11.0 : 12.0,
+                                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                                    color: isSelected ? Colors.white : Colors.grey.shade700,
+                                    letterSpacing: -0.2,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       );
-                    },
-                    child: GestureDetector(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        setState(() {
-                          if (isSelected) {
-                            _selectedTags.remove(tag);
-                          } else {
-                            _selectedTags.add(tag);
-                          }
-                        });
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        decoration: BoxDecoration(
-                          gradient: isSelected
-                              ? const LinearGradient(
-                                  colors: [Color(0xFF2196F3), Color(0xFF9C27B0)],
-                                )
-                              : null,
-                          color: isSelected ? null : const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isSelected ? Colors.transparent : Colors.grey.shade300,
-                            width: 1.5,
-                          ),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: const Color(0xFF2196F3).withOpacity(0.3),
-                                    blurRadius: 15,
-                                    offset: const Offset(0, 5),
-                                  ),
-                                ]
-                              : [],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 200),
-                              child: isSelected
-                                  ? const Icon(Icons.check_rounded, 
-                                      color: Colors.white, size: 16)
-                                  : const SizedBox(width: 16, height: 16),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              tag,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                                color: isSelected ? Colors.white : Colors.grey.shade700,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                          ],
+                    }).toList(),
+                  ),
+                  
+                  // Selected tags counter
+                  if (_selectedTags.isNotEmpty) ...[
+                    SizedBox(height: MediaQuery.of(context).size.width < 600 ? 12.0 : 16.0),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width < 600 ? 12.0 : 16.0, vertical: 6.0),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.blue.shade100,
+                          width: 1,
                         ),
                       ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check_circle_rounded,
+                            color: Colors.blue.shade600,
+                            size: MediaQuery.of(context).size.width < 600 ? 14.0 : 16.0,
+                          ),
+                          SizedBox(width: MediaQuery.of(context).size.width < 600 ? 6.0 : 8.0),
+                          Text(
+                            '${_selectedTags.length} টি বৈশিষ্ট্য নির্বাচিত',
+                            style: TextStyle(
+                              fontSize: MediaQuery.of(context).size.width < 600 ? 11.0 : 12.0,
+                              color: Colors.blue.shade700,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  );
-                }).toList(),
+                  ],
+                ],
               ),
             ],
           ),
@@ -1098,14 +1196,14 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
               ),
             ],
           ),
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 16.0 : 24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 10.0 : 12.0),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
@@ -1115,24 +1213,29 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.edit_note_rounded,
                       color: Colors.white,
-                      size: 20,
+                      size: MediaQuery.of(context).size.width < 600 ? 18.0 : 20.0,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'বিস্তারিত মন্তব্য (ঐচ্ছিক)',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: const Color(0xFF1A1A1A),
-                      letterSpacing: -0.5,
+                  SizedBox(width: MediaQuery.of(context).size.width < 600 ? 10.0 : 12.0),
+                  Expanded(
+                    child: Text(
+                      'বিস্তারিত মন্তব্য (ঐচ্ছিক)',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF1A1A1A),
+                        letterSpacing: -0.5,
+                        fontSize: MediaQuery.of(context).size.width < 600 ? 16.0 : null,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: MediaQuery.of(context).size.width < 600 ? 16.0 : 20.0),
               Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
@@ -1152,26 +1255,29 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                       hintText: 'আপনার অভিজ্ঞতা বিস্তারিত বর্ণনা করুন...',
                       hintStyle: TextStyle(
                         color: Colors.grey.shade500,
-                        fontSize: 15,
+                        fontSize: MediaQuery.of(context).size.width < 600 ? 14.0 : 15.0,
                       ),
-                      contentPadding: const EdgeInsets.all(20),
+                      contentPadding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 16.0 : 20.0),
                     ),
-                    maxLines: 5,
+                    maxLines: MediaQuery.of(context).size.width < 600 ? 4 : 5,
                     maxLength: 500,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      color: Color(0xFF1A1A1A),
+                    style: TextStyle(
+                      fontSize: MediaQuery.of(context).size.width < 600 ? 14.0 : 15.0,
+                      color: const Color(0xFF1A1A1A),
                     ),
                     buildCounter: (context, {required currentLength, required isFocused, maxLength}) {
                       return Container(
-                        padding: const EdgeInsets.only(bottom: 16, right: 16),
+                        padding: EdgeInsets.only(
+                          bottom: MediaQuery.of(context).size.width < 600 ? 12.0 : 16.0,
+                          right: MediaQuery.of(context).size.width < 600 ? 12.0 : 16.0,
+                        ),
                         child: Text(
                           '$currentLength / $maxLength',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: MediaQuery.of(context).size.width < 600 ? 11.0 : 12.0,
                             fontWeight: FontWeight.w600,
-                            color: currentLength > 400 
-                                ? Colors.orange.shade600 
+                            color: currentLength > 400
+                                ? Colors.orange.shade600
                                 : Colors.grey.shade600,
                           ),
                         ),
@@ -1189,14 +1295,14 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
 
   Widget _buildPremiumSubmitButton(ThemeData theme) {
     final isValid = _rating > 0;
-    
+
     return SlideTransition(
       position: _slideAnimation,
       child: FadeTransition(
         opacity: _fadeAnimation,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
-          height: 60,
+          height: MediaQuery.of(context).size.width < 600 ? 56.0 : 60.0,
           decoration: BoxDecoration(
             gradient: isValid
                 ? const LinearGradient(
@@ -1226,9 +1332,11 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
               onTap: isValid && !_isLoading
                   ? () {
                       HapticFeedback.mediumImpact();
-                      setState(() {
-                        _isLoading = true;
-                      });
+                      if (!_isDisposed) {
+                        setState(() {
+                          _isLoading = true;
+                        });
+                      }
                       final authState = context.read<AuthBloc>().state as Authenticated;
                       final comment = _commentController.text.isEmpty
                           ? null
@@ -1251,10 +1359,10 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 300),
                       child: _isLoading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
+                          ? SizedBox(
+                              width: MediaQuery.of(context).size.width < 600 ? 20.0 : 24.0,
+                              height: MediaQuery.of(context).size.width < 600 ? 20.0 : 24.0,
+                              child: const CircularProgressIndicator(
                                 strokeWidth: 2.5,
                                 valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                               ),
@@ -1262,18 +1370,18 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                           : Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.send_rounded,
                                   color: Colors.white,
-                                  size: 20,
+                                  size: MediaQuery.of(context).size.width < 600 ? 18.0 : 20.0,
                                 ),
-                                const SizedBox(width: 8),
+                                SizedBox(width: MediaQuery.of(context).size.width < 600 ? 6.0 : 8.0),
                                 Text(
                                   'রিভিউ জমা দিন',
                                   style: theme.textTheme.labelLarge?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w800,
-                                    fontSize: 16,
+                                    fontSize: MediaQuery.of(context).size.width < 600 ? 14.0 : 16.0,
                                     letterSpacing: -0.3,
                                   ),
                                 ),
@@ -1283,13 +1391,13 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                   ),
                   if (isValid && !_isLoading)
                     Positioned(
-                      right: 20,
+                      right: MediaQuery.of(context).size.width < 600 ? 16.0 : 20.0,
                       top: 0,
                       bottom: 0,
                       child: Icon(
                         Icons.arrow_forward_rounded,
                         color: Colors.white.withOpacity(0.8),
-                        size: 20,
+                        size: MediaQuery.of(context).size.width < 600 ? 18.0 : 20.0,
                       ),
                     ),
                 ],
@@ -1307,7 +1415,7 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
       child: FadeTransition(
         opacity: _fadeAnimation,
         child: Container(
-          height: 52,
+          height: MediaQuery.of(context).size.width < 600 ? 48.0 : 52.0,
           decoration: BoxDecoration(
             color: const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.circular(16),
@@ -1328,15 +1436,15 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                     Icon(
                       Icons.arrow_back_rounded,
                       color: Colors.grey.shade700,
-                      size: 18,
+                      size: MediaQuery.of(context).size.width < 600 ? 16.0 : 18.0,
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: MediaQuery.of(context).size.width < 600 ? 6.0 : 8.0),
                     Text(
                       'পিছনে যান',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: Colors.grey.shade700,
                         fontWeight: FontWeight.w600,
-                        fontSize: 15,
+                        fontSize: MediaQuery.of(context).size.width < 600 ? 14.0 : 15.0,
                       ),
                     ),
                   ],
@@ -1357,13 +1465,13 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
   }) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(MediaQuery.of(context).size.width < 600 ? 24.0 : 32.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 120,
-              height: 120,
+              width: MediaQuery.of(context).size.width < 600 ? 100.0 : 120.0,
+              height: MediaQuery.of(context).size.width < 600 ? 100.0 : 120.0,
               decoration: BoxDecoration(
                 gradient: LinearGradient(colors: gradient),
                 shape: BoxShape.circle,
@@ -1377,36 +1485,36 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
               ),
               child: Icon(
                 icon,
-                size: 48,
+                size: MediaQuery.of(context).size.width < 600 ? 40.0 : 48.0,
                 color: Colors.white,
               ),
             ),
-            const SizedBox(height: 32),
+            SizedBox(height: MediaQuery.of(context).size.width < 600 ? 24.0 : 32.0),
             Text(
               title,
-              style: const TextStyle(
-                fontSize: 24,
+              style: TextStyle(
+                fontSize: MediaQuery.of(context).size.width < 600 ? 20.0 : 24.0,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFF1A1A1A),
+                color: const Color(0xFF1A1A1A),
                 letterSpacing: -0.5,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: MediaQuery.of(context).size.width < 600 ? 8.0 : 12.0),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width < 600 ? 16.0 : 24.0),
               child: Text(
                 message,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: MediaQuery.of(context).size.width < 600 ? 14.0 : 16.0,
                   height: 1.5,
                   color: Colors.grey.shade600,
                 ),
                 textAlign: TextAlign.center,
               ),
             ),
-            const SizedBox(height: 32),
+            SizedBox(height: MediaQuery.of(context).size.width < 600 ? 24.0 : 32.0),
             Container(
-              height: 52,
+              height: MediaQuery.of(context).size.width < 600 ? 48.0 : 52.0,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [Color(0xFF2196F3), Color(0xFF9C27B0)],
@@ -1423,7 +1531,7 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
                       'বুকিং পেজে ফিরে যান',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 15,
+                        fontSize: MediaQuery.of(context).size.width < 600 ? 14.0 : 15.0,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -1443,32 +1551,33 @@ class _ReviewPageState extends State<ReviewPage> with TickerProviderStateMixin {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 80,
-            height: 80,
+            width: MediaQuery.of(context).size.width < 600 ? 60.0 : 80.0,
+            height: MediaQuery.of(context).size.width < 600 ? 60.0 : 80.0,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [Color(0xFF2196F3), Color(0xFF9C27B0)],
               ),
               shape: BoxShape.circle,
             ),
-            child: const CircularProgressIndicator(
+            child: CircularProgressIndicator(
               strokeWidth: 3,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: MediaQuery.of(context).size.width < 600 ? 16.0 : 24.0),
           Text(
             'লোড হচ্ছে...',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: MediaQuery.of(context).size.width < 600 ? 16.0 : 18.0,
               fontWeight: FontWeight.w700,
               color: Colors.grey.shade700,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: MediaQuery.of(context).size.width < 600 ? 6.0 : 8.0),
           Text(
             'আপনার বুকিং তথ্য প্রস্তুত করা হচ্ছে',
             style: TextStyle(
+              fontSize: MediaQuery.of(context).size.width < 600 ? 13.0 : null,
               color: Colors.grey.shade600,
             ),
           ),
