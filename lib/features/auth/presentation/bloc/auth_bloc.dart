@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:geolocator/geolocator.dart'; // ✅ Added for Position
+import 'package:geolocator/geolocator.dart';
 import 'package:smartsheba/core/network/api_client.dart';
 import '../../../provider/domain/entities/provider_application.dart';
 import '../../domain/entities/user_entity.dart';
@@ -31,7 +31,7 @@ class UpdateProfileEvent extends AuthEvent {
   final String? gender;
   final DateTime? dateOfBirth;
   final String? profileImageUrl;
-  final Position? location; // ✅ Added new field
+  final Position? location;
 
   UpdateProfileEvent({
     required this.name,
@@ -42,13 +42,18 @@ class UpdateProfileEvent extends AuthEvent {
     this.gender,
     this.dateOfBirth,
     this.profileImageUrl,
-    this.location, // ✅ Added to constructor
+    this.location,
   });
 }
 
 class SubmitProviderApplicationEvent extends AuthEvent {
   final ProviderApplication application;
   SubmitProviderApplicationEvent(this.application);
+}
+
+class SwitchRoleEvent extends AuthEvent {
+  final Role newRole;
+  SwitchRoleEvent(this.newRole);
 }
 
 /// --- STATES ---
@@ -74,8 +79,6 @@ class OtpSent extends AuthState {
   final String phoneNumber;
   OtpSent(this.phoneNumber);
 }
-
-
 
 /// --- BLOC ---
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
@@ -157,7 +160,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             gender: genderEnum,
             dateOfBirth: event.dateOfBirth,
             profileImageUrl: event.profileImageUrl,
-            location: event.location, // ✅ Updated with location
+            location: event.location,
             updatedAt: DateTime.now(),
           );
 
@@ -172,7 +175,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         emit(AuthError('প্রোফাইল আপডেট করতে লগইন করতে হবে'));
       }
     });
-    
 
     /// --- SUBMIT PROVIDER APPLICATION ---
     on<SubmitProviderApplicationEvent>((event, emit) async {
@@ -197,6 +199,47 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       } catch (e) {
         print('❌ PROVIDER APPLICATION ERROR: $e');
         emit(AuthError('অ্যাপ্লিকেশন জমা দিতে সমস্যা হয়েছে: $e'));
+      }
+    });
+
+    /// --- SWITCH ROLE ---
+    on<SwitchRoleEvent>((event, emit) async {
+      final currentState = state;
+      
+      if (currentState is! Authenticated) {
+        emit(AuthError('রোল পরিবর্তন করতে লগইন প্রয়োজন।'));
+        return;
+      }
+
+      emit(AuthLoading());
+      
+      try {
+        final response = await ApiClient.switchUserRole(
+          currentState.user.id, 
+          event.newRole
+        );
+
+        if (response['success']) {
+          final userJson = response['user'] as Map<String, dynamic>;
+          
+          // Create updated user with new role
+          final updatedUser = currentState.user.copyWith(
+            id: userJson['id'] as String,
+            role: event.newRole,
+            updatedAt: DateTime.now(),
+          );
+
+          // Save to SharedPreferences
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('user', jsonEncode(updatedUser.toJson()));
+
+          emit(Authenticated(updatedUser));
+          print('✅ ROLE SWITCH: User role changed to ${event.newRole.name}');
+        } else {
+          emit(AuthError(response['message'] ?? 'রোল পরিবর্তন ব্যর্থ হয়েছে'));
+        }
+      } catch (e) {
+        emit(AuthError('রোল পরিবর্তনে ত্রুটি: $e'));
       }
     });
 

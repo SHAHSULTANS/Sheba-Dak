@@ -11,6 +11,15 @@ import '../../features/chat/domain/entities/chat_message.dart';
 import 'package:smartsheba/features/booking/domain/entities/review_entity.dart';
 
 class DummyData {
+
+  // Add this method to your dummy_data.dart
+  static void updateUserRole(String userId, Role newRole) {
+    // In a real app, this would update the backend
+    // For dummy data, we'll simulate the role change
+    print('🔄 Updating user $userId role to: ${newRole.name}');
+  }
+
+
   // Mock Dhaka coordinates for realistic testing
   static final LatLng dhanmondi = LatLng(23.7465, 90.3760);
   static final LatLng gulshan = LatLng(23.7940, 90.4154);

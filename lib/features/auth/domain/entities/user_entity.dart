@@ -120,7 +120,8 @@ class UserEntity {
         if (location != null) 'location_lng': location!.longitude,
       };
 
-  UserEntity copyWith({
+    UserEntity copyWith({
+    String? id, // ✅ Add this
     String? name,
     String? email,
     String? address,
@@ -131,15 +132,16 @@ class UserEntity {
     String? profileImageUrl,
     bool? isVerified,
     DateTime? updatedAt,
-    Position? location, // ✅ Added
+    Position? location,
+    Role? role, // ✅ Add this
   }) {
     return UserEntity(
-      id: id,
+      id: id ?? this.id, // ✅ Add this
       name: name ?? this.name,
       phoneNumber: phoneNumber,
       email: email ?? this.email,
       token: token,
-      role: role,
+      role: role ?? this.role, // ✅ Add this
       address: address ?? this.address,
       city: city ?? this.city,
       postalCode: postalCode ?? this.postalCode,
@@ -149,9 +151,10 @@ class UserEntity {
       isVerified: isVerified ?? this.isVerified,
       createdAt: createdAt,
       updatedAt: updatedAt ?? DateTime.now(),
-      location: location ?? this.location, // ✅ Added
+      location: location ?? this.location,
     );
   }
+
 
   String get fullAddress {
     final parts = <String>[];
@@ -219,4 +222,8 @@ class UserEntity {
         return 'অন্যান্য';
     }
   }
+
+  
 }
+
+

@@ -303,4 +303,33 @@ class ApiClient {
     await Future.delayed(const Duration(seconds: 1)); // Simulate API delay
     return DummyData.getBookingById(bookingId);
   }
+
+
+
+    // Add this method to your api_client.dart
+  static Future<Map<String, dynamic>> switchUserRole(
+    String userId, 
+    Role newRole
+  ) async {
+    await Future.delayed(const Duration(seconds: 1));
+    
+    try {
+      // Update user role in DummyData
+      DummyData.updateUserRole(userId, newRole);
+      
+      return {
+        'success': true,
+        'message': 'রোল সফলভাবে পরিবর্তন করা হয়েছে',
+        'user': {
+          'id': newRole == Role.customer ? 'customer1' : 'provider1',
+          'role': newRole.name,
+        },
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'রোল পরিবর্তনে সমস্যা: $e',
+      };
+    }
+  }
 }

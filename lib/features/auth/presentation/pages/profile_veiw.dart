@@ -1544,6 +1544,9 @@ class _ProfileViewPageState extends State<ProfileViewPage>
     );
   }
 
+
+
+  
   void _showQuickSettings(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -1588,16 +1591,147 @@ class _ProfileViewPageState extends State<ProfileViewPage>
             ),
             const Divider(),
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: const [
-                  Center(
-                    child: Text(
-                      'কন্টেন্ট শীঘ্রই যোগ করা হবে',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  ),
-                ],
+              child: BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, state) {
+                  if (state is! Authenticated) {
+                    return const Center(
+                      child: Text('লগইন প্রয়োজন'),
+                    );
+                  }
+
+                  final user = state.user;
+                  final isProvider = user.role == Role.provider;
+
+                  return ListView(
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      // Role Toggle Section
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.switch_account,
+                                      color: AppColors.primary,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'অ্যাকাউন্ট মোড',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  isProvider ? 'সার্ভিস প্রোভাইডার' : 'কাস্টমার',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Switch(
+                              value: isProvider,
+                              onChanged: (value) {
+                                _showRoleSwitchConfirmation(
+                                  context, 
+                                  value ? Role.provider : Role.customer,
+                                  user
+                                );
+                              },
+                              activeColor: AppColors.primary,
+                              activeTrackColor: AppColors.primary.withOpacity(0.3),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      //Other Settings Options
+                      _buildSettingsOption(
+                        icon: Icons.notifications_outlined,
+                        title: 'নোটিফিকেশন',
+                        subtitle: 'পুশ নোটিফিকেশন ম্যানেজ করুন',
+                        onTap: () {},
+                      ),
+                      _buildSettingsOption(
+                        icon: Icons.security_outlined,
+                        title: 'প্রাইভেসি',
+                        subtitle: 'ডেটা এবং গোপনীয়তা সেটিংস',
+                        onTap: () {},
+                      ),
+                      _buildSettingsOption(
+                        icon: Icons.help_outline,
+                        title: 'সাহায্য ও সমর্থন',
+                        subtitle: 'সহায়তা কেন্দ্র এবং FAQ',
+                        onTap: () {},
+                      ),
+                      _buildSettingsOption(
+                        icon: Icons.info_outline,
+                        title: 'অ্যাপ সম্পর্কে',
+                        subtitle: 'সংস্করণ এবং তথ্য',
+                        onTap: () {},
+                      ),
+                      
+                      const SizedBox(height: 20),
+                      
+                      // Logout Button
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: ListTile(
+                          leading: Icon(
+                            Icons.logout_outlined,
+                            color: Colors.red.shade600,
+                          ),
+                          title: Text(
+                            'লগআউট',
+                            style: TextStyle(
+                              color: Colors.red.shade600,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(
+                            'অ্যাকাউন্ট থেকে সাইন আউট করুন',
+                            style: TextStyle(
+                              color: Colors.red.shade500,
+                            ),
+                          ),
+                          trailing: Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 16,
+                            color: Colors.red.shade500,
+                          ),
+                          onTap: () {
+                            Navigator.pop(sheetContext);
+                            context.read<AuthBloc>().add(LogoutEvent());
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ],
@@ -1605,6 +1739,122 @@ class _ProfileViewPageState extends State<ProfileViewPage>
       ),
     );
   }
+
+  void _showRoleSwitchConfirmation(BuildContext context, Role newRole, UserEntity currentUser) {
+    final isSwitchingToProvider = newRole == Role.provider;
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          isSwitchingToProvider ? 'প্রোভাইডারে পরিবর্তন করুন' : 'কাস্টমারে পরিবর্তন করুন',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isSwitchingToProvider
+                  ? 'আপনি কি নিশ্চিত যে আপনি প্রোভাইডার মোডে স্যুইচ করতে চান?'
+                  : 'আপনি কি নিশ্চিত যে আপনি কাস্টমার মোডে স্যুইচ করতে চান?',
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isSwitchingToProvider
+                  ? '• প্রোভাইডার ড্যাশবোর্ড অ্যাক্সেস পাবেন\n• সার্ভিস অফার করতে পারবেন\n• বুকিং রিকোয়েস্ট পাবেন'
+                  : '• সার্ভিস বুক করতে পারবেন\n• প্রোভাইডার ড্যাশবোর্ড অ্যাক্সেস হারাবেন\n• সাধারণ ইউজার হিসেবে কাজ করবেন',
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('বাতিল'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context); // Close confirmation dialog
+              Navigator.pop(context); // Close settings sheet
+              
+              // Dispatch role switch event
+              context.read<AuthBloc>().add(SwitchRoleEvent(newRole));
+              
+              // Show success message
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    isSwitchingToProvider 
+                      ? 'প্রোভাইডার মোডে স্যুইচ করা হয়েছে' 
+                      : 'কাস্টমার মোডে স্যুইচ করা হয়েছে',
+                  ),
+                  backgroundColor: Colors.green,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              context.go('/');
+              // Future.delayed(const Duration(milliseconds: 500), () {
+              //   if (mounted) {
+              //     context.go('/');
+              //   }
+              // });
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isSwitchingToProvider ? Colors.green : Colors.blue,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(isSwitchingToProvider ? 'প্রোভাইডার হোন' : 'কাস্টমার হোন'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: ListTile(
+        leading: Icon(
+          icon,
+          color: AppColors.primary,
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade600,
+          ),
+        ),
+        trailing: Icon(
+          Icons.arrow_forward_ios_rounded,
+          size: 16,
+          color: Colors.grey.shade500,
+        ),
+        onTap: onTap,
+      ),
+    );
+  }
+
+
 
   void _showLogoutDialog(BuildContext context) {
     showDialog(
