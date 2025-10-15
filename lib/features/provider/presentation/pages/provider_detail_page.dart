@@ -446,7 +446,7 @@ class ProviderDetailPage extends StatelessWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   elevation: 2,
                 ),
-                onPressed: () => context.go('/contact-provider/${provider.id}'),
+                onPressed: () => context.push('/contact-provider/${provider.id}'),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -517,7 +517,7 @@ class ProviderDetailPage extends StatelessWidget {
         // Always return a widget, even if it's an empty container
         if (state is Authenticated && state.user.role == Role.customer) {
           return FloatingActionButton(
-            onPressed: () => context.go('/contact-provider/${provider.id}'),
+            onPressed: () => context.push('/contact-provider/${provider.id}'),
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
             elevation: 4,

@@ -286,7 +286,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   ),
                 ),
                 // Search Icon
-                _buildSearchIcon(context),
+                // _buildSearchIcon(context),
                 const SizedBox(width: 8),
                 // Notification Icon (only for authenticated)
                 BlocBuilder<AuthBloc, AuthState>(
@@ -352,7 +352,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   Widget _buildNotificationIcon(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.2),
         borderRadius: BorderRadius.circular(12),
