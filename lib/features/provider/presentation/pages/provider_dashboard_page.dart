@@ -7,6 +7,7 @@ import 'package:smartsheba/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
 import 'package:smartsheba/core/utils/dummy_data.dart';
 import 'package:smartsheba/features/booking/domain/entities/booking_entity.dart';
+import 'package:smartsheba/features/provider/domain/entities/service_provider.dart';
 
 class ProviderDashboardPage extends StatefulWidget {
   const ProviderDashboardPage({super.key});
@@ -97,6 +98,52 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
       .toList()
     ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
 
+  Widget _buildServiceAreaCard(ServiceProvider provider) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.map, color: Color(0xFF2196F3)),
+                const SizedBox(width: 8),
+                const Text(
+                  'সার্ভিস এরিয়া',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (provider.businessLocation != null) ...[
+              Text('লোকেশন: ${provider.businessLocation!.latitude.toStringAsFixed(4)}, '
+                  '${provider.businessLocation!.longitude.toStringAsFixed(4)}'),
+              const SizedBox(height: 8),
+              Text('সার্ভিস রেডিয়াস: ${provider.serviceRadius.toStringAsFixed(1)} কিমি'),
+              const SizedBox(height: 8),
+              if (provider.servedAreas.isNotEmpty)
+                Text('সার্ভিসকৃত এলাকা: ${provider.servedAreas.join(', ')}'),
+            ] else ...[
+              const Text('সার্ভিস এরিয়া সেটআপ করা হয়নি', style: TextStyle(color: Colors.orange)),
+            ],
+            const SizedBox(height: 12),
+            ElevatedButton(
+              onPressed: () {
+                context.push('/service-area-setup', extra: provider);
+              },
+              child: const Text('সার্ভিস এরিয়া ম্যানেজ করুন'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2196F3),
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -132,9 +179,9 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
             child: TabBar(
               controller: _tabController,
               isScrollable: true, // FIXED: Make tabs scrollable for mobile
-              labelColor: AppColors.primary,
+              labelColor: const Color(0xFF2196F3),
               unselectedLabelColor: Colors.grey.shade600,
-              indicatorColor: AppColors.primary,
+              indicatorColor: const Color(0xFF2196F3),
               indicatorWeight: 3,
               tabs: const [
                 Tab(text: 'ইনকামিং'),
@@ -159,7 +206,8 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
           if (_errorMessage.isNotEmpty) {
             return _buildErrorView(theme);
           }
-          return _buildTabView(context, state.user, theme);
+          final provider = DummyData.getProviderById(state.user.id);
+          return _buildTabView(context, state.user, theme, provider);
         },
       ),
     );
@@ -268,13 +316,13 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, color: AppColors.error, size: 80),
+            Icon(Icons.error_outline, color: const Color(0xFF2196F3), size: 80),
             const SizedBox(height: 16),
             Text(
               _errorMessage,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: AppColors.error,
+                color: const Color(0xFF2196F3),
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
@@ -285,7 +333,7 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
               icon: const Icon(Icons.refresh, size: 20),
               label: const Text('আবার চেষ্টা করুন'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
+                backgroundColor: const Color(0xFF2196F3),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -297,7 +345,7 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
     );
   }
 
-  Widget _buildTabView(BuildContext context, UserEntity user, ThemeData theme) {
+  Widget _buildTabView(BuildContext context, UserEntity user, ThemeData theme, ServiceProvider provider) {
     final totalEarnings = _bookings
         .where((b) => b.status == BookingStatus.completed)
         .fold(0.0, (sum, b) => sum + b.price);
@@ -319,11 +367,13 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
               _buildStatItem('পেমেন্ট অপেক্ষমাণ', _paymentPendingBookings.length.toString(), Icons.payment, Colors.deepOrange),
               _buildStatItem('গ্রহণকৃত', _confirmedBookings.length.toString(), Icons.check_circle, Colors.blue),
               _buildStatItem('প্রস্তুত', _readyToStartBookings.length.toString(), Icons.play_circle, Colors.purple),
-              _buildStatItem('চলমান', _activeBookings.length.toString(), Icons.build_circle, AppColors.primary),
-              _buildStatItem('সম্পন্ন', _completedBookings.length.toString(), Icons.verified, AppColors.success),
+              _buildStatItem('চলমান', _activeBookings.length.toString(), Icons.build_circle, const Color(0xFF2196F3)),
+              _buildStatItem('সম্পন্ন', _completedBookings.length.toString(), Icons.verified, Colors.green),
             ],
           ),
         ),
+        // Service Area Card
+        _buildServiceAreaCard(provider),
         // Tab Content
         Expanded(
           child: TabBarView(
@@ -378,7 +428,7 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
     return RefreshIndicator(
       onRefresh: _loadBookings,
       backgroundColor: Colors.white,
-      color: AppColors.primary,
+      color: const Color(0xFF2196F3),
       child: ListView.separated(
         padding: const EdgeInsets.all(16),
         physics: const BouncingScrollPhysics(),
@@ -560,8 +610,8 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
                   ? null
                   : () => _updateBookingStatus(booking.id, BookingStatus.cancelled),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.error,
-                side: BorderSide(color: AppColors.error),
+                foregroundColor: const Color(0xFFF44336),
+                side: const BorderSide(color: Color(0xFFF44336)),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
@@ -620,7 +670,7 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
                   ? null
                   : () => _updateBookingStatus(booking.id, BookingStatus.inProgress),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
+                backgroundColor: const Color(0xFF2196F3),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -649,7 +699,7 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
               ? null
               : () => _updateBookingStatus(booking.id, BookingStatus.inProgress),
           style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
+            backgroundColor: const Color(0xFF2196F3),
             foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -703,8 +753,8 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
       case BookingStatus.cancelled:
         return Text(
           'বাতিল হয়েছে',
-          style: TextStyle(
-            color: AppColors.error,
+          style: const TextStyle(
+            color: Color(0xFFF44336),
             fontWeight: FontWeight.w500,
             fontStyle: FontStyle.italic,
           ),
@@ -722,7 +772,7 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('অনুগ্রহ করে লগইন করুন'),
-          backgroundColor: AppColors.error,
+          backgroundColor: const Color(0xFFF44336),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
@@ -753,7 +803,7 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('নেভিগেশন ত্রুটি: ${e.toString()}'),
-          backgroundColor: AppColors.error,
+          backgroundColor: const Color(0xFFF44336),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
@@ -806,7 +856,7 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result['message'] ?? 'স্ট্যাটাস আপডেট করা হয়েছে'),
-          backgroundColor: newStatus == BookingStatus.cancelled ? AppColors.error : AppColors.success,
+          backgroundColor: newStatus == BookingStatus.cancelled ? const Color(0xFFF44336) : Colors.green,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
@@ -816,7 +866,7 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('স্ট্যাটাস আপডেট করতে সমস্যা: ${e.toString()}'),
-          backgroundColor: AppColors.error,
+          backgroundColor: const Color(0xFFF44336),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
@@ -839,11 +889,11 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
       case BookingStatus.paymentCompleted:
         return Colors.green.shade700;
       case BookingStatus.inProgress:
-        return AppColors.primary;
+        return const Color(0xFF2196F3);
       case BookingStatus.completed:
-        return AppColors.success;
+        return Colors.green;
       case BookingStatus.cancelled:
-        return AppColors.error;
+        return const Color(0xFFF44336);
     }
   }
 
@@ -890,4 +940,4 @@ class _ProviderDashboardPageState extends State<ProviderDashboardPage>
     final timeStr = '${date.hour}:${date.minute.toString().padLeft(2, '0')}';
     return '$dateStr, $timeStr';
   }
-}
+}  

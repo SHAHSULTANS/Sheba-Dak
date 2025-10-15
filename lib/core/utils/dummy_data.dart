@@ -1,4 +1,6 @@
 import 'package:uuid/uuid.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'dart:math' as math;
 import '../../features/booking/domain/entities/booking_entity.dart';
 import '../../features/auth/domain/entities/user_entity.dart';
 import '../../features/home/domain/entities/service_category.dart';
@@ -9,6 +11,13 @@ import '../../features/chat/domain/entities/chat_message.dart';
 import 'package:smartsheba/features/booking/domain/entities/review_entity.dart';
 
 class DummyData {
+  // Mock Dhaka coordinates for realistic testing
+  static final LatLng dhanmondi = LatLng(23.7465, 90.3760);
+  static final LatLng gulshan = LatLng(23.7940, 90.4154);
+  static final LatLng uttara = LatLng(23.8759, 90.3795);
+  static final LatLng mirpur = LatLng(23.8223, 90.3654);
+  static final LatLng banani = LatLng(23.7948, 90.4054);
+
   // ==============================
   // Customers
   // ==============================
@@ -753,7 +762,7 @@ class DummyData {
   }
 
   static List<ServiceProvider> getProviders() {
-    return const [
+    return [
       ServiceProvider(
         id: 'provider1',
         name: 'Rahim Technician',
@@ -761,6 +770,11 @@ class DummyData {
         isVerified: true,
         services: ['pipe-repair', 'drain-clean', 'toilet-fix', 'deep-clean', 'carpet-clean', 'sofa-clean', 'wall-paint', 'wood-polish', 'texture-paint'],
         description: 'Five years experienced skilled plumber and cleaner. Ensure fast and reliable service.',
+        businessLocation: dhanmondi,
+        serviceRadius: 15.0,
+        servedAreas: ['Dhanmondi', 'Mohammadpur', 'Lalbag'],
+        isOnline: true,
+        lastActive: DateTime.now(),
       ),
       ServiceProvider(
         id: 'provider2',
@@ -769,6 +783,11 @@ class DummyData {
         isVerified: false,
         services: ['wiring-fix', 'light-fix', 'circuit-break'],
         description: 'Electrical specialist. Capable of solving any complex wiring problems in home or office.',
+        businessLocation: gulshan,
+        serviceRadius: 12.0,
+        servedAreas: ['Gulshan', 'Banani', 'Baridhara'],
+        isOnline: true,
+        lastActive: DateTime.now().subtract(const Duration(minutes: 15)),
       ),
       ServiceProvider(
         id: 'provider3',
@@ -777,6 +796,11 @@ class DummyData {
         isVerified: true,
         services: ['deep-clean', 'carpet-clean', 'sofa-clean'],
         description: 'We deeply clean your home or office by making it germ-free.',
+        businessLocation: uttara,
+        serviceRadius: 20.0,
+        servedAreas: ['Uttara', 'Tejgaon', 'Ashulia'],
+        isOnline: false,
+        lastActive: DateTime.now().subtract(const Duration(hours: 2)),
       ),
       ServiceProvider(
         id: 'provider4',
@@ -785,6 +809,11 @@ class DummyData {
         isVerified: true,
         services: ['wall-paint', 'wood-polish', 'texture-paint'],
         description: 'Professional painting service. Give new life to your walls.',
+        businessLocation: mirpur,
+        serviceRadius: 8.0,
+        servedAreas: ['Mirpur', 'Sheorapara', 'Pallabi'],
+        isOnline: true,
+        lastActive: DateTime.now(),
       ),
       ServiceProvider(
         id: 'provider5',
@@ -793,20 +822,59 @@ class DummyData {
         isVerified: false,
         services: ['ac-install', 'ac-service', 'gas-refill'],
         description: 'Contact for all types of AC installation, servicing and quick repairs.',
+        businessLocation: banani,
+        serviceRadius: 10.0,
+        servedAreas: ['Banani', 'Gulshan', 'Mohakhali'],
+        isOnline: true,
+        lastActive: DateTime.now().subtract(const Duration(hours: 1)),
       ),
     ];
+  }
+
+  // Helper method to filter providers by location
+  static List<ServiceProvider> getNearbyProviders(LatLng userLocation, {double maxDistance = 25.0}) {
+    final providers = getProviders();
+    return providers.where((provider) {
+      if (provider.businessLocation == null) return true;
+      
+      final distance = _calculateDistance(provider.businessLocation!, userLocation);
+      return distance <= maxDistance && provider.isOnline;
+    }).toList();
+  }
+
+  static double _calculateDistance(LatLng start, LatLng end) {
+    // Same calculation as in ServiceProvider entity
+    const earthRadius = 6371.0;
+    final lat1 = start.latitude * (math.pi / 180.0);
+    final lon1 = start.longitude * (math.pi / 180.0);
+    final lat2 = end.latitude * (math.pi / 180.0);
+    final lon2 = end.longitude * (math.pi / 180.0);
+    
+    final dLat = lat2 - lat1;
+    final dLon = lon2 - lon1;
+    
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1) * math.cos(lat2) * math.sin(dLon / 2) * math.sin(dLon / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    
+    return earthRadius * c;
   }
 
   static ServiceProvider getProviderById(String providerId) {
     return getProviders().firstWhere(
       (p) => p.id == providerId,
-      orElse: () => const ServiceProvider(
+      orElse: () => ServiceProvider(
         id: 'error',
         name: 'Provider Not Found',
         rating: 0.0,
         isVerified: false,
         services: [],
         description: 'The requested provider could not be found.',
+        businessLocation: null,
+        serviceRadius: 0.0,
+        servedAreas: [],
+        isOnline: false,
+        lastActive: DateTime.now(),
       ),
     );
   }

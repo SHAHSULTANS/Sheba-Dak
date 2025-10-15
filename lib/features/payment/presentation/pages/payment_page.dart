@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smartsheba/core/network/api_client.dart';
+import 'package:smartsheba/core/theme/app_theme.dart';
 import 'package:smartsheba/core/theme/colors.dart';
 import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
 import 'package:smartsheba/features/auth/presentation/bloc/auth_bloc.dart';

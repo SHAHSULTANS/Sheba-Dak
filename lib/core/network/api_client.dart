@@ -3,10 +3,12 @@ import 'package:http/http.dart' as http;
 import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
 import 'package:smartsheba/features/booking/domain/entities/review_entity.dart';
 import 'package:smartsheba/features/chat/domain/entities/chat_message.dart';
+import 'package:smartsheba/features/provider/domain/entities/service_provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:smartsheba/core/utils/dummy_data.dart';
 import 'package:smartsheba/features/booking/domain/entities/booking_entity.dart';
 import 'package:smartsheba/features/provider/domain/entities/provider_application.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class ApiClient {
   static const String baseUrl = 'https://dummyapi.example.com';
@@ -48,10 +50,10 @@ class ApiClient {
         'success': true,
         'token': 'dummy_jwt_token',
         'user': {
-          'id': 'customer1',
+          'id': 'provider1',
           'name': 'Test User',
           'phone_number': phoneNumber,
-          'role': 'customer'
+          'role': 'provider'
         }
       };
     } else {
@@ -69,7 +71,7 @@ class ApiClient {
         'name': name,
         'phone_number': 'dummy_phone',
         'email': email,
-        'role': 'customer',
+        'role': 'provider',
         'address': address,
       },
       'token': 'updated_dummy_jwt',
@@ -238,16 +240,33 @@ class ApiClient {
     return DummyData.getUserById('customer1');
   }
 
+  static Future<List<ServiceProvider>> getNearbyProviders(
+    double lat, 
+    double lng, 
+    double radius
+  ) async {
+    await Future.delayed(const Duration(seconds: 1));
+    
+    final userLocation = LatLng(lat, lng);
+    return DummyData.getNearbyProviders(userLocation, maxDistance: radius);
+  }
 
-
-
-
-
-
-
-
-
-
+  static Future<Map<String, dynamic>> updateProviderServiceArea(
+    String providerId,
+    LatLng businessLocation,
+    double serviceRadius,
+    List<String> servedAreas,
+    bool isOnline,
+  ) async {
+    await Future.delayed(const Duration(seconds: 1));
+    
+    // In real app, this would update the backend
+    return {
+      'success': true,
+      'message': 'সার্ভিস এরিয়া সফলভাবে আপডেট করা হয়েছে',
+      'provider_id': providerId,
+    };
+  }
 
   static Future<Map<String, dynamic>> submitReview(
     String bookingId,

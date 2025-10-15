@@ -9,6 +9,7 @@ import 'package:smartsheba/features/auth/presentation/pages/profile_veiw.dart';
 import 'package:smartsheba/features/booking/presentation/pages/incoming_requests_page.dart';
 import 'package:smartsheba/features/booking/presentation/pages/incoming_request_details_page.dart';
 import 'package:smartsheba/features/booking/presentation/pages/review_page.dart';
+import 'package:smartsheba/features/provider/domain/entities/service_provider.dart';
 import 'package:smartsheba/features/provider/presentation/pages/provider_confirmed_booking.dart';
 import 'package:smartsheba/features/auth/presentation/pages/login_page.dart';
 import 'package:smartsheba/features/auth/presentation/pages/register_page.dart';
@@ -28,6 +29,7 @@ import 'package:smartsheba/features/booking/presentation/pages/my_bookings_page.
 import 'package:smartsheba/features/payment/presentation/pages/payment_page.dart';
 import 'package:smartsheba/features/chat/presentation/pages/chat_page.dart';
 import 'package:smartsheba/features/booking/presentation/pages/payment_status_page.dart';
+import 'package:smartsheba/features/provider/presentation/pages/service_area_setup_page.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
@@ -183,6 +185,27 @@ final GoRouter appRouter = GoRouter(
         bookingId: state.pathParameters['bookingId']!,
       ),
     ),
+
+    // Add to lib/routes.dart
+   GoRoute(
+      path: '/service-area-setup',
+      builder: (context, state) {
+        final extra = state.extra;
+        ServiceProvider? provider;
+
+        if (extra != null) {
+          if (extra is ServiceProvider) {
+            provider = extra;
+          } else if (extra is Map<String, dynamic>) {
+            provider = ServiceProvider.fromJson(extra);
+          }
+        }
+
+        return ServiceAreaSetupPage(existingProvider: provider);
+      },
+    ),
+
+
   ],
 
   // --- ✅ FIXED REDIRECT LOGIC: Proper Pattern Matching with Trailing Slashes ---

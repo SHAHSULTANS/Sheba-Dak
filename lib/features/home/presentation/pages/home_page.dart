@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:smartsheba/core/services/location_service.dart';
 import 'package:smartsheba/core/utils/dummy_data.dart';
 import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
 import 'package:smartsheba/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:smartsheba/core/theme/app_theme.dart';
+import 'package:smartsheba/features/provider/domain/entities/service_provider.dart';
+import 'dart:math' as math;
 import '../../domain/entities/service_category.dart';
 
 class HomePage extends StatefulWidget {
@@ -21,9 +26,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late AnimationController _heroAnimationController;
   late Animation<double> _heroScaleAnimation;
 
+  LatLng? _userLocation;
+  bool _isLoadingLocation = false;
+  double _searchRadius = 15.0;
+  bool _showNearbyOnly = false;
+
   @override
   void initState() {
     super.initState();
+    _getUserLocation();
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -69,10 +80,60 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  Future<void> _getUserLocation() async {
+    setState(() {
+      _isLoadingLocation = true;
+    });
+
+    try {
+      final position = await LocationService.getCurrentPosition();
+      setState(() {
+        _userLocation = LatLng(position.latitude, position.longitude);
+        _isLoadingLocation = false;
+      });
+    } catch (e) {
+      print('Location error: $e');
+      setState(() {
+        _isLoadingLocation = false;
+      });
+      
+      // Fallback to Dhaka center
+      _userLocation = DummyData.dhanmondi;
+    }
+  }
+
+  List<ServiceProvider> _getFilteredProviders() {
+    final allProviders = DummyData.getProviders();
+    
+    if (!_showNearbyOnly || _userLocation == null) {
+      return allProviders;
+    }
+
+    return DummyData.getNearbyProviders(_userLocation!, maxDistance: _searchRadius);
+  }
+
+  double _calculateDistance(LatLng start, LatLng end) {
+    const earthRadius = 6371.0;
+    final lat1 = start.latitude * (math.pi / 180.0);
+    final lon1 = start.longitude * (math.pi / 180.0);
+    final lat2 = end.latitude * (math.pi / 180.0);
+    final lon2 = end.longitude * (math.pi / 180.0);
+    
+    final dLat = lat2 - lat1;
+    final dLon = lon2 - lon1;
+    
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1) * math.cos(lat2) * math.sin(dLon / 2) * math.sin(dLon / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    
+    return earthRadius * c;
+  }
+
   @override
   Widget build(BuildContext context) {
     final categories = DummyData.getServiceCategories();
     final theme = Theme.of(context);
+    final filteredProviders = _getFilteredProviders();
     
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -101,7 +162,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               opacity: _fadeAnimation,
               child: SlideTransition(
                 position: _slideAnimation,
-                child: _buildAuthenticatedContent(context, state.user, categories, theme),
+                child: _buildAuthenticatedContent(context, state.user, categories, theme, filteredProviders),
               ),
             );
           }
@@ -112,7 +173,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               opacity: _fadeAnimation,
               child: SlideTransition(
                 position: _slideAnimation,
-                child: _buildGuestContent(context, categories, theme),
+                child: _buildGuestContent(context, categories, theme, filteredProviders),
               ),
             );
           }
@@ -241,6 +302,22 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
                 // Profile Icon or Login Button
                 _buildProfileOrLoginButton(context),
+                // Location Refresh
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: _isLoadingLocation 
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.my_location, color: Colors.white),
+                  onPressed: _getUserLocation,
+                  tooltip: 'লোকেশন আপডেট',
+                ),
                 const SizedBox(width: 4),
               ],
             ),
@@ -375,7 +452,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   // ========== AUTHENTICATED CONTENT ==========
-  Widget _buildAuthenticatedContent(BuildContext context, UserEntity user, List<ServiceCategory> categories, ThemeData theme) {
+  Widget _buildAuthenticatedContent(BuildContext context, UserEntity user, List<ServiceCategory> categories, ThemeData theme, List<ServiceProvider> filteredProviders) {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Column(
@@ -386,6 +463,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           _buildQuickActions(context, user, theme),
           _buildFeaturedServices(context, categories, theme),
           _buildCategoriesGrid(context, categories, theme),
+          _buildLocationFilterCard(filteredProviders),
+          if (!_isLoadingLocation) _buildProvidersList(filteredProviders),
           const SizedBox(height: 100),
         ],
       ),
@@ -393,7 +472,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   // ========== GUEST CONTENT ==========
-  Widget _buildGuestContent(BuildContext context, List<ServiceCategory> categories, ThemeData theme) {
+  Widget _buildGuestContent(BuildContext context, List<ServiceCategory> categories, ThemeData theme, List<ServiceProvider> filteredProviders) {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Column(
@@ -404,9 +483,218 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           _buildGuestPrompt(context, theme), // ✅ Call to action
           _buildFeaturedServices(context, categories, theme),
           _buildCategoriesGrid(context, categories, theme),
+          _buildLocationFilterCard(filteredProviders),
+          if (!_isLoadingLocation) _buildProvidersList(filteredProviders),
           const SizedBox(height: 100),
         ],
       ),
+    );
+  }
+
+  Widget _buildLocationFilterCard(List<ServiceProvider> providers) {
+    return Card(
+      margin: const EdgeInsets.all(16),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.location_on, color: Color(0xFF2196F3)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _userLocation != null 
+                      ? 'আপনার বর্তমান লোকেশন'
+                      : 'লোকেশন লোড হচ্ছে...',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Nearby Toggle
+            Row(
+              children: [
+                const Expanded(
+                  child: Text('কাছাকাছি সার্ভিস দেখুন'),
+                ),
+                Switch(
+                  value: _showNearbyOnly,
+                  onChanged: (value) {
+                    setState(() {
+                      _showNearbyOnly = value;
+                    });
+                  },
+                  activeColor: const Color(0xFF2196F3),
+                ),
+              ],
+            ),
+            
+            // Radius Slider (only show when nearby is enabled)
+            if (_showNearbyOnly) ...[
+              const SizedBox(height: 12),
+              Text('সার্চ রেডিয়াস: ${_searchRadius.toStringAsFixed(0)} কিমি'),
+              Slider(
+                value: _searchRadius,
+                min: 5.0,
+                max: 50.0,
+                divisions: 9,
+                onChanged: (value) {
+                  setState(() {
+                    _searchRadius = value;
+                  });
+                },
+                activeColor: const Color(0xFF2196F3),
+              ),
+            ],
+            
+            // Results Info
+            if (_userLocation != null) 
+              Text(
+                '${providers.length}টি সার্ভিস প্রোভাইডার পাওয়া গেছে',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 12,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProvidersList(List<ServiceProvider> providers) {
+    if (providers.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.location_off, size: 64, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              Text(
+                'কোন সার্ভিস প্রোভাইডার পাওয়া যায়নি',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 8),
+              if (_showNearbyOnly)
+                Text(
+                  'সার্চ রেডিয়াস বাড়ান বা "কাছাকাছি সার্ভিস" বন্ধ করুন',
+                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: providers.length,
+      itemBuilder: (context, index) {
+        final provider = providers[index];
+        final distance = _userLocation != null && provider.businessLocation != null
+            ? _calculateDistance(_userLocation!, provider.businessLocation!)
+            : null;
+
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: const Color(0xFF2196F3),
+              child: Text(
+                provider.name.isNotEmpty ? provider.name[0] : '?',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+            title: Text(provider.name),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  provider.description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (distance != null)
+                  Text(
+                    'দূরত্ব: ${distance.toStringAsFixed(1)} কিমি',
+                    style: TextStyle(
+                      color: Colors.green[700],
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                Wrap(
+                  spacing: 4,
+                  children: [
+                    if (provider.isOnline)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green),
+                        ),
+                        child: Text(
+                          'অনলাইন',
+                          style: TextStyle(
+                            color: Colors.green[700],
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    if (provider.isVerified)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue),
+                        ),
+                        child: Text(
+                          'ভেরিফাইড',
+                          style: TextStyle(
+                            color: Colors.blue[700],
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+            trailing: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.star, color: Colors.amber, size: 16),
+                    const SizedBox(width: 4),
+                    Text(provider.rating.toStringAsFixed(1)),
+                  ],
+                ),
+                if (provider.serviceRadius > 0)
+                  Text(
+                    '${provider.serviceRadius.toStringAsFixed(0)}কিমি',
+                    style: TextStyle(fontSize: 10, color: Colors.grey),
+                  ),
+              ],
+            ),
+            onTap: () {
+              // Navigate to provider details
+              context.push('/provider-detail/${provider.id}');
+            },
+          ),
+        );
+      },
     );
   }
 
