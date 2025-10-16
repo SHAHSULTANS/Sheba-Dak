@@ -29,6 +29,9 @@ dependencies:
   dartz: ^0.10.1
   get_it: ^7.6.4
   badges: ^3.1.1
+  speech_to_text: ^7.0.0
+  rxdart: ^0.27.7
+  # ... your existing dependencies
 dev_dependencies:
   flutter_test:
     sdk: flutter

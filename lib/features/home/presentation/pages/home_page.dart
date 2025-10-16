@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:smartsheba/core/search/presentation/widgets/smart_search_bar.dart';
 import 'package:smartsheba/core/services/location_service.dart';
 import 'package:smartsheba/core/utils/dummy_data.dart';
 import 'package:smartsheba/features/auth/domain/entities/user_entity.dart';
@@ -1048,69 +1049,25 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   // ========== SEARCH SECTION ==========
-  Widget _buildSearchSection(BuildContext context, ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-            ),
-          ],
-          border: Border.all(color: Colors.grey.shade200),
+   // ========== SEARCH SECTION ==========
+    Widget _buildSearchSection(BuildContext context, ThemeData theme) {
+      return Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: SmartSearchBar(
+          onSearchSubmitted: (query) {
+            if (query.isNotEmpty) {
+              context.push('/search-results', extra: {'query': query});
+            }
+          },
+          showNearbyFilter: true,
+          onNearbyFilterChanged: (enabled) {
+            setState(() {
+              _showNearbyOnly = enabled;
+            });
+          },
         ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('সার্চ ফিচার (শীঘ্রই আসছে)'),
-                  backgroundColor: Colors.blue,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(20),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                children: [
-                  Icon(Icons.search_rounded, 
-                      color: Colors.grey.shade600, size: 24),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'সেবা, প্রোভাইডার, বা ক্যাটাগরি খুঁজুন...',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.tune_rounded, 
-                        color: Colors.grey.shade600, size: 20),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
+      );
+    }
   // ========== QUICK ACTIONS (Authenticated Users Only) ==========
   Widget _buildQuickActions(BuildContext context, UserEntity user, ThemeData theme) {
     return Padding(

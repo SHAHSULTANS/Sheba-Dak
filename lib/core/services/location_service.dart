@@ -1,7 +1,9 @@
+import 'dart:math';
 import 'dart:typed_data';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../location/domain/entities/location_entity.dart'; // <-- import your entity
 
 class LocationService {
   static final LocationService _instance = LocationService._internal();
@@ -14,27 +16,95 @@ class LocationService {
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.deniedForever) {
-        throw Exception('Location permissions are permanently denied');
+        throw Exception('লোকেশন পারমিশন পার্মানেন্টলি ডিনাই করা হয়েছে।');
       }
     }
     return permission;
   }
 
-  // 🔹 Get Current Location (Instance Method)
+  // 🔹 Get Current Location (Position)
   Future<Position> getCurrentLocation() async {
     final permission = await checkPermission();
     if (permission == LocationPermission.denied) {
-      throw Exception('Location permissions denied');
+      throw Exception('লোকেশন পারমিশন ডিনাই করা হয়েছে।');
     }
+
     return await Geolocator.getCurrentPosition(
       desiredAccuracy: LocationAccuracy.high,
       timeLimit: const Duration(seconds: 10),
     );
   }
 
+  // 🔹 Static method for safe call (for other layers)
+  static Future<Position> getCurrentPosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      throw Exception('লোকেশন সার্ভিস একটিভেট করা নেই।');
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        throw Exception('লোকেশন পারমিশন ডিনাই করা হয়েছে।');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      throw Exception('লোকেশন পারমিশন পার্মানেন্টলি ডিনাই করা হয়েছে।');
+    }
+
+    try {
+      return await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.best,
+      ).timeout(const Duration(seconds: 15));
+    } catch (e) {
+      throw Exception('লোকেশন ফেচ করতে সমস্যা: $e');
+    }
+  }
+
+  // 🔹 Get Current Location as LocationEntity
+  Future<LocationEntity> getCurrentLocationEntity() async {
+    final position = await getCurrentPosition();
+    return LocationEntity(
+      latitude: position.latitude,
+      longitude: position.longitude,
+    );
+  }
+
+  // 🔹 Calculate Distance between two LocationEntities (Haversine)
+  static double calculateDistance(LocationEntity start, LocationEntity end) {
+    const earthRadius = 6371.0; // Earth radius in kilometers
+
+    double dLat = _degreesToRadians(end.latitude - start.latitude);
+    double dLon = _degreesToRadians(end.longitude - start.longitude);
+
+    double a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_degreesToRadians(start.latitude)) *
+            cos(_degreesToRadians(end.latitude)) *
+            sin(dLon / 2) *
+            sin(dLon / 2);
+
+    double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return earthRadius * c;
+  }
+
+  static double _degreesToRadians(double degrees) => degrees * pi / 180;
+
+  // 🔹 Convert LatLng to LocationEntity
+  LocationEntity latLngToLocationEntity(LatLng latLng) {
+    return LocationEntity(
+      latitude: latLng.latitude,
+      longitude: latLng.longitude,
+    );
+  }
+
   // 🔹 Generate Static Map URL
   String getStaticMapUrl(double lat, double lng, {String? markerLabel}) {
-    const apiKey = 'YOUR_GOOGLE_MAPS_API_KEY'; // ⚠️ Use env vars in production
+    const apiKey = 'YOUR_GOOGLE_MAPS_API_KEY'; // ⚠️ Replace in production
     final baseUrl = 'https://maps.googleapis.com/maps/api/staticmap';
     final params = {
       'center': '$lat,$lng',
@@ -57,54 +127,4 @@ class LocationService {
       throw Exception('Failed to load map: ${response.statusCode}');
     }
   }
-
-
-
-
-
-    static Future<Position> getCurrentPosition() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    // Check if location services are enabled
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      throw Exception('লোকেশন সার্ভিস একটিভেট করা নেই। দয়া করে আপনার ডিভাইসের লোকেশন সার্ভিস চালু করুন।');
-    }
-
-    // Check location permissions
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        throw Exception('লোকেশন পারমিশন ডিনাই করা হয়েছে।');
-      }
-    }
-
-    if (permission == LocationPermission.deniedForever) {
-      throw Exception('লোকেশন পারমিশন পার্মানেন্টলি ডিনাই করা হয়েছে। দয়া করে অ্যাপ সেটিংস থেকে পারমিশন দিন।');
-    }
-
-    // Get current position with timeout
-    try {
-      return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.best,
-      ).timeout(const Duration(seconds: 15));
-    } catch (e) {
-      throw Exception('লোকেশন ফেচ করতে সমস্যা: $e');
-    }
-  }
-
-  static Future<double> calculateDistance(
-    double startLat,
-    double startLng,
-    double endLat,
-    double endLng,
-  ) async {
-    return await Geolocator.distanceBetween(
-      startLat, startLng, endLat, endLng,
-    ) / 1000.0; // Convert to kilometers
-  }
-
 }
-
