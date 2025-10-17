@@ -907,4 +907,36 @@ class DummyData {
       print('🚀 DEBUG: - Booking ${booking.id}: ${messages.length} messages');
     }
   }
+
+ // Add this method for personalized recommendations
+static List<Service> getRecommendedServices() {
+  return [
+    Service(
+      id: 'rec1',
+      categoryId: 'plumbing', // Make sure this matches your parameter order
+      name: 'জরুরি প্লাম্বিং সার্ভিস', // Changed from 'title' to 'name'
+      description: 'তাৎক্ষণিক পানির লাইন এবং ড্রেনেজ সার্ভিস',
+      price: 800,
+      providerName: 'প্রফেশনাল প্লাম্বিং সার্ভিস', // ✅ Add providerName
+    ),
+    Service(
+      id: 'rec2',
+      categoryId: 'ac_service',
+      name: 'এসি রিপেয়ার', // Changed from 'title' to 'name'
+      description: 'এয়ার কন্ডিশনার মেরামত এবং পরিষ্কার',
+      price: 1200,
+      providerName: 'কুল এয়ার টেকনিশিয়ান', // ✅ Add providerName
+    ),
+    Service(
+      id: 'rec3',
+      categoryId: 'electrical',
+      name: 'ইলেকট্রিক্যাল ওয়্যারিং', // Changed from 'title' to 'name'
+      description: 'বাড়ির ইলেকট্রিক সেটআপ এবং মেরামত',
+      price: 1500,
+      providerName: 'সেফ ইলেকট্রিক সার্ভিস', // ✅ Add providerName
+    ),
+    // Add more as needed
+  ];
+}
+
 }

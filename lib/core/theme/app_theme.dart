@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'colors.dart';
 
 class AppTheme {
+  // Primary color for easy access
+  static const Color primaryColor = AppColors.primary;
+
   // Light theme (default) with Material 3 for modern UX.
   static ThemeData get lightTheme {
     return ThemeData(
@@ -55,8 +58,6 @@ class AppTheme {
     );
   }
 }
-
-
 
 // import 'package:flutter/material.dart';
 

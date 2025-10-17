@@ -31,6 +31,8 @@ dependencies:
   badges: ^3.1.1
   speech_to_text: ^7.0.0
   rxdart: ^0.27.7
+  # geocoding: ^2.1.1
+
   # ... your existing dependencies
 dev_dependencies:
   flutter_test:

@@ -25,7 +25,8 @@ class _StaticMapWidgetState extends State<StaticMapWidget> {
 
   Future<void> _loadMap() async {
     try {
-      final bytes = await LocationService().fetchStaticMap(widget.lat, widget.lng);
+      // ✅ FIX: Call as static method without creating instance
+      final bytes = await LocationService.fetchStaticMap(widget.lat, widget.lng);
       if (mounted) {
         setState(() {
           _mapBytes = bytes;
@@ -33,27 +34,91 @@ class _StaticMapWidgetState extends State<StaticMapWidget> {
         });
       }
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Map load failed: $e')));
+      print('Map loading error: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+      // Only show snackbar if the widget is still in the tree
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('মানচিত্র লোড করতে সমস্যা: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : _mapBytes != null
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.memory(_mapBytes!, fit: BoxFit.cover),
-              )
-            : Container(
-                height: 200,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
+    return Container(
+      height: 200,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: _isLoading
+          ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 8),
+                  Text(
+                    'মানচিত্র লোড হচ্ছে...',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            )
+          : _mapBytes != null
+              ? ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.location_off, size: 50, color: Colors.grey),
-              );
+                  child: Image.memory(
+                    _mapBytes!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return _buildErrorState();
+                    },
+                  ),
+                )
+              : _buildErrorState(),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.location_off, size: 50, color: Colors.grey.shade400),
+          const SizedBox(height: 8),
+          Text(
+            'মানচিত্র লোড হয়নি',
+            style: TextStyle(
+              color: Colors.grey.shade600,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ElevatedButton.icon(
+            onPressed: _loadMap,
+            icon: const Icon(Icons.refresh, size: 16),
+            label: const Text('আবার চেষ্টা করুন'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
