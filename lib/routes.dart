@@ -1,5 +1,6 @@
 // lib/routes.dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // For SystemNavigator.pop
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smartsheba/core/search/presentation/pages/search_results_page.dart';
@@ -32,13 +33,52 @@ import 'package:smartsheba/features/chat/presentation/pages/chat_page.dart';
 import 'package:smartsheba/features/booking/presentation/pages/payment_status_page.dart';
 import 'package:smartsheba/features/provider/presentation/pages/service_area_setup_page.dart';
 
+// 🟢 ADD THIS GLOBAL KEY
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final GoRouter appRouter = GoRouter(
+  // 🟢 ASSIGN THE KEY TO ROUTER
+  navigatorKey: rootNavigatorKey,
   initialLocation: '/',
   routes: [
     // --- CORE HOME ROUTE ---
     GoRoute(
       path: '/',
-      builder: (context, state) => const HomePage(),
+      pageBuilder: (context, state) {
+        return MaterialPage<void>(
+          key: state.pageKey,
+          child: PopScope(
+            canPop: false,
+            onPopInvoked: (didPop) async {
+              if (didPop) return;
+
+              // 🟢 USE GLOBAL KEY CONTEXT FOR showDialog
+              final bool? shouldExit = await showDialog<bool>(
+                context: rootNavigatorKey.currentContext!,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Confirm Exit'),
+                  content: const Text('Do you want to exit the application?'),
+                  actions: <Widget>[
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: const Text('No'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: const Text('Yes, Exit'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (shouldExit == true) {
+                SystemNavigator.pop();
+              }
+            },
+            child: const HomePage(),
+          ),
+        );
+      },
     ),
 
     // --- AUTH ROUTES ---
@@ -187,8 +227,7 @@ final GoRouter appRouter = GoRouter(
       ),
     ),
 
-    // Add to lib/routes.dart
-   GoRoute(
+    GoRoute(
       path: '/service-area-setup',
       builder: (context, state) {
         final extra = state.extra;
@@ -206,7 +245,6 @@ final GoRouter appRouter = GoRouter(
       },
     ),
 
-
     // --- SEARCH RESULTS ROUTE (OPTIONAL EXTRA) ---
     GoRoute(
       path: '/search-results',
@@ -223,12 +261,9 @@ final GoRouter appRouter = GoRouter(
         return SearchResultsPage(query: query);
       },
     ),
-
-
-
   ],
 
-  // --- ✅ FIXED REDIRECT LOGIC: Proper Pattern Matching with Trailing Slashes ---
+  // --- REDIRECT LOGIC ---
   redirect: (context, state) {
     final authState = BlocProvider.of<AuthBloc>(context, listen: false).state;
     final isAuthenticated = authState is Authenticated;
@@ -261,22 +296,21 @@ final GoRouter appRouter = GoRouter(
     }
 
     // ✅ STEP 3: PROTECTED ROUTES - Check authentication requirement
-    // ⚠️ CRITICAL: Use trailing slashes for parameterized routes
     const protectedPatterns = [
       '/profile-view',
       '/profile-edit',
       '/profile-creation',
       '/my-bookings',
-      '/booking/',          // ✅ Trailing slash for /booking/:providerId/:serviceCategory/:price
-      '/payment/',          // ✅ Trailing slash for /payment/:bookingId
-      '/payment-status/',   // ✅ Trailing slash for /payment-status/:id
+      '/booking/',          
+      '/payment/',          
+      '/payment-status/',   
       '/address-input',
-      '/chat/',             // ✅ Trailing slash for /chat/:bookingId/:customerId/:providerId
-      '/review/',           // ✅ Trailing slash for /review/:bookingId
+      '/chat/',             
+      '/review/',           
       '/provider-dashboard',
       '/provider-registration',
-      '/incoming-requests', // Both with and without params
-      '/contact-provider/', // ✅ Trailing slash for /contact-provider/:id
+      '/incoming-requests', 
+      '/contact-provider/', 
     ];
 
     // Check if target path matches any protected pattern
@@ -302,10 +336,10 @@ final GoRouter appRouter = GoRouter(
       // 🔵 CUSTOMER-ONLY ROUTES
       const customerRoutes = [
         '/my-bookings',
-        '/booking/',      // ✅ Trailing slash
-        '/payment/',      // ✅ Trailing slash
-        '/review/',       // ✅ Trailing slash
-        '/contact-provider/', // ✅ Trailing slash
+        '/booking/',      
+        '/payment/',      
+        '/review/',       
+        '/contact-provider/', 
       ];
 
       for (String route in customerRoutes) {
@@ -313,7 +347,7 @@ final GoRouter appRouter = GoRouter(
           if (userRole != Role.customer) {
             print('❌ CUSTOMER-ONLY: $targetPath blocked for ${userRole?.name}');
             if (userRole == Role.provider) {
-              return '/provider-dashboard'; // Redirect providers to their dashboard
+              return '/provider-dashboard';
             }
             return '/';
           }
@@ -324,7 +358,7 @@ final GoRouter appRouter = GoRouter(
       // 🟢 PROVIDER-ONLY ROUTES
       const providerRoutes = [
         '/provider-dashboard',
-        '/incoming-requests', // Both exact and with params
+        '/incoming-requests', 
       ];
 
       for (String route in providerRoutes) {

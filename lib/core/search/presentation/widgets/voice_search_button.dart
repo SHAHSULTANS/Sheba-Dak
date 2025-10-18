@@ -19,7 +19,7 @@ class _VoiceSearchButtonState extends State<VoiceSearchButton> {
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListening = false;
   bool _speechAvailable = false;
-  bool _disposed = false; // track if disposed
+  bool _disposed = false;
 
   @override
   void initState() {
@@ -28,70 +28,98 @@ class _VoiceSearchButtonState extends State<VoiceSearchButton> {
   }
 
   void _initSpeech() async {
+    // Initializing the service, checking availability
     _speechAvailable = await _speech.initialize(
       onStatus: (status) {
-        if (_disposed) return; // prevent setState after dispose
-        setState(() {
-          _isListening = status == 'listening';
-        });
-        widget.onListeningStateChange(_isListening);
+        if (_disposed) return;
+        // 'listening' status is received when listening starts
+        final newListeningState = status == stt.SpeechToText.listeningStatus; 
+        
+        // Only call setState if the status actually changed
+        if (_isListening != newListeningState) { 
+          setState(() {
+            _isListening = newListeningState;
+          });
+          widget.onListeningStateChange(_isListening);
+        }
       },
       onError: (error) {
-        if (_disposed) return; // prevent setState after dispose
-        setState(() {
-          _isListening = false;
-        });
-        widget.onListeningStateChange(false);
-        _showError('ভয়েস ইনপুট ত্রুটি: ${error.errorMsg}');
+        if (_disposed) return;
+        // The error handler should always reset the listening state
+        if (_isListening) {
+          setState(() {
+            _isListening = false;
+          });
+          widget.onListeningStateChange(false);
+        }
+        // TRANSLATED: 'Voice Input Error: ${error.errorMsg}'
+        _showError('Voice Input Error: ${error.errorMsg}');
       },
     );
   }
 
   void _startListening() {
     if (!_speechAvailable) {
-      _showError('ভয়েস সার্ভিস পাওয়া যায়নি');
+      // TRANSLATED: 'Voice service not available'
+      _showError('Voice service not available');
       return;
     }
 
-    if (_disposed) return;
-    setState(() => _isListening = true);
-    widget.onListeningStateChange(true);
+    if (_isListening) {
+      // Already listening, so stop and restart or just return
+      _stopListening();
+      return; 
+    }
 
+    if (_disposed) return;
+    
+    // Call the plugin's listen method
     _speech.listen(
       onResult: (result) {
         if (_disposed) return;
         if (result.finalResult) {
+          // Send final recognized text to parent and stop
           widget.onVoiceResult(result.recognizedWords);
           _stopListening();
         }
       },
+      // You may need to tune these durations based on user behavior
       listenFor: const Duration(seconds: 30),
       pauseFor: const Duration(seconds: 5),
       partialResults: true,
-      localeId: 'bn_BD',
+      // UPDATED LOCALE: Target locale for English (United States)
+      localeId: 'en_US', 
     );
+    
+    // Note: The UI state update (setState) will be handled by the onStatus callback
   }
 
   void _stopListening() {
     if (_disposed) return;
     _speech.stop();
-    setState(() => _isListening = false);
-    widget.onListeningStateChange(false);
+    // State update handled by the onStatus callback, but we can force it here
+    if (_isListening && !_disposed) {
+      setState(() => _isListening = false);
+      widget.onListeningStateChange(false);
+    }
   }
 
   void _showError(String message) {
     if (_disposed) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
-    );
+    // Ensure we have a context for the ScaffoldMessenger
+    if (mounted) { 
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
   void dispose() {
-    _disposed = true; // mark disposed
+    _disposed = true;
     _speech.stop();
     super.dispose();
   }
@@ -100,11 +128,17 @@ class _VoiceSearchButtonState extends State<VoiceSearchButton> {
   Widget build(BuildContext context) {
     return IconButton(
       icon: Icon(
-        _isListening ? Icons.mic_off : Icons.mic,
+        // Use a disabled color if speech is not available
+        _speechAvailable 
+            ? (_isListening ? Icons.mic_off : Icons.mic)
+            : Icons.mic_none, 
         color: _isListening ? Colors.red : Colors.grey[600],
       ),
-      onPressed: _isListening ? _stopListening : _startListening,
-      tooltip: 'ভয়েস সার্চ',
+      onPressed: _speechAvailable 
+          ? (_isListening ? _stopListening : _startListening)
+          : null, // Disable button if speech service isn't available
+      // TRANSLATED: 'Voice Search'
+      tooltip: 'Voice Search',
     );
   }
 }

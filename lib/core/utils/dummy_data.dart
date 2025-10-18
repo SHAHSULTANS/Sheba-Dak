@@ -704,7 +704,7 @@ class DummyData {
       ),
       ServiceCategory(
         id: 'laundry',
-        name: 'Laundry & Dry Cleaning',
+        name: 'Laundry & Dry',
         iconPath: 'assets/icons/laundry.png',
         description: 'Clothes washing and ironing',
       ),
@@ -740,7 +740,7 @@ class DummyData {
       ),
       ServiceCategory(
         id: 'emergency',
-        name: 'Emergency Services',
+        name: 'Emergency',
         iconPath: 'assets/icons/emergency.png',
         description: 'Ambulance, fire service etc',
       ),

@@ -515,7 +515,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
               ),
               TextButton.icon(
-                onPressed: () => context.go('/recommendations'),
+                onPressed: () => context.push('/recommendations'),
                 icon: Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.accent),  // Neon green arrow
                 label: const Text('সব দেখুন', style: TextStyle(color: AppColors.accent)),
                 style: TextButton.styleFrom(padding: EdgeInsets.zero),
@@ -772,6 +772,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           final distance = _userLocation != null && provider.businessLocation != null
               ? _calculateDistance(_userLocation!, provider.businessLocation!)
               : null;
+
           return Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Card(
@@ -791,7 +792,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Enhanced Avatar with status indicator
+                      // Avatar with online indicator
                       Stack(
                         children: [
                           CircleAvatar(
@@ -822,55 +823,64 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             ),
                         ],
                       ),
+
                       const SizedBox(width: 16),
+
+                      // Provider info section
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    provider.name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 18,
-                                    ),
-                                  ),
-                                ),
-                                if (provider.isVerified)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      gradient: AppColors.primaryGradient,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.verified, color: Colors.white, size: 14),
-                                        const SizedBox(width: 2),
-                                        const Text(
-                                          'ভেরিফাইড',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                              ],
+                            // Name
+                            Text(
+                              provider.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 18,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 6),
+
+                            // Verified Badge (below name)
+                            if (provider.isVerified) ...[
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  gradient: AppColors.primaryGradient,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Icon(Icons.verified, color: Colors.white, size: 14),
+                                    SizedBox(width: 2),
+                                    Text(
+                                      'ভেরিফাইড',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+
+                            const SizedBox(height: 8),
+
+                            // Description
                             Text(
                               provider.description,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                             ),
+
                             const SizedBox(height: 10),
+
+                            // Distance
                             if (distance != null)
                               Row(
                                 children: [
@@ -889,6 +899,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           ],
                         ),
                       ),
+
+                      const SizedBox(width: 8),
+
+                      // Ratings + service radius
                       Column(
                         mainAxisAlignment: MainAxisAlignment.end,
                         crossAxisAlignment: CrossAxisAlignment.end,
@@ -900,7 +914,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                 5,
                                 (starIndex) => Icon(
                                   starIndex < provider.rating.floor() ? Icons.star : Icons.star_border,
-                                  color: AppColors.rating,  // Gold stars
+                                  color: AppColors.rating,
                                   size: 18,
                                 ),
                               ),
@@ -913,7 +927,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           ),
                           if (provider.serviceRadius > 0)
                             Text(
-                              '${provider.serviceRadius.toStringAsFixed(0)}কিমি',
+                              '${provider.serviceRadius.toStringAsFixed(0)} কিমি',
                               style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
                             ),
                         ],
@@ -928,6 +942,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         childCount: providers.length,
       ),
     );
+
+
   }
 
   // ========== ENHANCED WELCOME HEADERS with gradient updates ==========
@@ -1398,7 +1414,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
               ),
               TextButton.icon(
-                onPressed: () => context.go('/services/all'),
+                onPressed: () => context.push('/services/all'),
                 icon: Icon(Icons.arrow_forward_ios, size: 14, color: AppColors.accent),
                 label: Text('সব দেখুন', style: TextStyle(color: AppColors.accent)),
                 style: TextButton.styleFrom(padding: EdgeInsets.zero),
@@ -1552,7 +1568,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   child: InkWell(
                     onTap: () {
                       HapticFeedback.lightImpact();
-                      context.go('/services/${category.id}');
+                      context.push('/services/${category.id}');
                     },
                     borderRadius: BorderRadius.circular(24),
                     child: Padding(
